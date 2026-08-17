@@ -1,19 +1,27 @@
-// import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 
-// const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder-url.supabase.co';
-// const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-key';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// export const supabase = createClient(supabaseUrl, supabaseKey);
+let client = null;
 
-export const supabase = {
-  auth: {
-    signInWithPassword: async () => {
-      console.warn("Supabase not installed. This is a dummy client.");
-      return { data: null, error: new Error("Supabase client is not installed.") };
-    },
-    signUp: async () => {
-      console.warn("Supabase not installed. This is a dummy client.");
-      return { data: null, error: new Error("Supabase client is not installed.") };
-    }
+const isValidUrl = (url) => {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
   }
 };
+
+if (supabaseUrl && supabaseAnonKey && isValidUrl(supabaseUrl)) {
+  try {
+    client = createClient(supabaseUrl, supabaseAnonKey);
+  } catch (e) {
+    console.warn('Error inicializando Supabase Client:', e.message);
+  }
+} else {
+  console.warn('Supabase URL no es una URL válida o no está configurada.');
+}
+
+export const supabase = client;

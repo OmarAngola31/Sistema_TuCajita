@@ -7,10 +7,19 @@ import Products from './components/Products';
 import Footer from './components/Footer';
 import Login from './components/Login';
 import Register from './components/Register';
+import AdminDashboard from './components/AdminDashboard';
+import { supabase } from './supabaseClient';
 
 function App() {
-  const [currentView, setCurrentView] = useState('home');
-  const [user, setUser] = useState(null); // { type: 'admin' | 'client', name: string }
+  const [currentView, setCurrentView] = useState('home'); // 'home' | 'productos' | 'login' | 'register' | 'admin'
+  const [user, setUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('tucajita_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
 
   // Handle hash navigation
   useEffect(() => {
@@ -19,6 +28,8 @@ function App() {
         setCurrentView('productos');
       } else if (window.location.hash === '#inicio') {
         setCurrentView('home');
+      } else if (window.location.hash === '#admin') {
+        setCurrentView('admin');
       }
     };
 
@@ -27,13 +38,57 @@ function App() {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
+  // Listen to Supabase auth state if available
+  useEffect(() => {
+    if (!supabase) return;
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        const isAdmin = session.user.email?.includes('admin') || session.user.user_metadata?.role === 'admin';
+        const userData = {
+          id: session.user.id,
+          type: isAdmin ? 'admin' : 'client',
+          role: isAdmin ? 'admin' : 'client',
+          name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Usuario',
+          email: session.user.email,
+        };
+        setUser(userData);
+        localStorage.setItem('tucajita_user', JSON.stringify(userData));
+      }
+    });
+
+    return () => {
+      authListener?.subscription?.unsubscribe();
+    };
+  }, []);
+
   const handleLogin = (userData) => {
     setUser(userData);
+    localStorage.setItem('tucajita_user', JSON.stringify(userData));
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    if (supabase) {
+      try {
+        await supabase.auth.signOut();
+      } catch (e) {
+        console.warn('Sign out error:', e);
+      }
+    }
     setUser(null);
+    localStorage.removeItem('tucajita_user');
+    setCurrentView('home');
   };
+
+  // If in admin view, render AdminDashboard standalone or with top navigation
+  if (currentView === 'admin') {
+    return (
+      <AdminDashboard
+        user={user}
+        setCurrentView={setCurrentView}
+        onLogout={handleLogout}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -41,6 +96,7 @@ function App() {
         currentView={currentView}
         setCurrentView={setCurrentView}
         user={user}
+        onLogout={handleLogout}
       />
 
       {currentView === 'home' ? (
