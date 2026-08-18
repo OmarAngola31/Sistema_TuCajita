@@ -9,13 +9,15 @@ import Login from './components/Login';
 import Register from './components/Register';
 import AdminDashboard from './components/AdminDashboard';
 import { supabase } from './supabaseClient';
+
+// 🛒 Importaciones del sistema de Carrito
 import { CartProvider } from './context/CartContext';
 import { ProductDetail } from './components/ProductDetail';
 import { CartView } from './components/CartView';
 import { OrderConfirmationView } from './components/OrderConfirmationView';
 
 function App() {
-  const [currentView, setCurrentView] = useState('home');
+  const [currentView, setCurrentView] = useState('home'); // 'home' | 'productos' | 'producto_detalle' | 'carrito' | 'confirmacion' | 'login' | 'register' | 'admin'
   const [user, setUser] = useState(() => {
     try {
       const saved = localStorage.getItem('tucajita_user');
@@ -25,6 +27,7 @@ function App() {
     }
   });
 
+  // Handle hash navigation
   useEffect(() => {
     const handleHashChange = () => {
       if (window.location.hash === '#productos') {
@@ -43,6 +46,7 @@ function App() {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
+  // Listen to Supabase auth state if available
   useEffect(() => {
     if (!supabase) return;
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
@@ -83,6 +87,7 @@ function App() {
     setCurrentView('home');
   };
 
+  // If in admin view, render AdminDashboard standalone or with top navigation
   if (currentView === 'admin') {
     return (
       <AdminDashboard
@@ -127,6 +132,7 @@ function App() {
 
         <Footer />
 
+        {/* WhatsApp floating button */}
         <a
           href="https://wa.me/584146146237"
           target="_blank"
