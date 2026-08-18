@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer } from 'react';
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '../supabaseClient';
 
 export function generateAutoOrderNumber() {
   const p = Math.floor(100 + Math.random() * 900);
