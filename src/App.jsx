@@ -9,35 +9,31 @@ import Login from './components/Login';
 import Register from './components/Register';
 import AdminDashboard from './components/AdminDashboard';
 import { supabase } from './supabaseClient';
+
+// Carrito y nuevas vistas
 import { CartProvider } from './context/CartContext';
 import { ProductDetail } from './components/ProductDetail';
 import { CartView } from './components/CartView';
 import { OrderConfirmationView } from './components/OrderConfirmationView';
+import { UserProfileView } from './components/UserProfileView';
 
 function App() {
   const [currentView, setCurrentView] = useState('home');
+  const [selectedProduct, setSelectedProduct] = useState(null);
   const [user, setUser] = useState(() => {
     try {
       const saved = localStorage.getItem('tucajita_user');
       return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
+    } catch { return null; }
   });
 
   useEffect(() => {
     const handleHashChange = () => {
-      if (window.location.hash === '#productos') {
-        setCurrentView('productos');
-      } else if (window.location.hash === '#carrito') {
-        setCurrentView('carrito');
-      } else if (window.location.hash === '#inicio') {
-        setCurrentView('home');
-      } else if (window.location.hash === '#admin') {
-        setCurrentView('admin');
-      }
+      if (window.location.hash === '#productos') setCurrentView('productos');
+      else if (window.location.hash === '#carrito') setCurrentView('carrito');
+      else if (window.location.hash === '#inicio') setCurrentView('home');
+      else if (window.location.hash === '#admin') setCurrentView('admin');
     };
-
     handleHashChange();
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
@@ -47,11 +43,13 @@ function App() {
     if (!supabase) return;
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
-        const isAdmin = session.user.email?.includes('admin') || session.user.user_metadata?.role === 'admin';
+        const role = session.user.user_metadata?.role ||
+          (session.user.email?.includes('admin') ? 'admin' :
+           session.user.email?.includes('asesor') ? 'asesor' : 'client');
         const userData = {
           id: session.user.id,
-          type: isAdmin ? 'admin' : 'client',
-          role: isAdmin ? 'admin' : 'client',
+          type: role,
+          role,
           name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Usuario',
           email: session.user.email,
         };
@@ -59,10 +57,7 @@ function App() {
         localStorage.setItem('tucajita_user', JSON.stringify(userData));
       }
     });
-
-    return () => {
-      authListener?.subscription?.unsubscribe();
-    };
+    return () => authListener?.subscription?.unsubscribe();
   }, []);
 
   const handleLogin = (userData) => {
@@ -72,30 +67,26 @@ function App() {
 
   const handleLogout = async () => {
     if (supabase) {
-      try {
-        await supabase.auth.signOut();
-      } catch (e) {
-        console.warn('Sign out error:', e);
-      }
+      try { await supabase.auth.signOut(); } catch (e) { console.warn('Sign out error:', e); }
     }
     setUser(null);
     localStorage.removeItem('tucajita_user');
     setCurrentView('home');
   };
 
+  // Función para ir al detalle de un producto
+  const goToProduct = (product) => {
+    setSelectedProduct(product);
+    setCurrentView('producto_detalle');
+  };
+
   if (currentView === 'admin') {
-    return (
-      <AdminDashboard
-        user={user}
-        setCurrentView={setCurrentView}
-        onLogout={handleLogout}
-      />
-    );
+    return <AdminDashboard user={user} setCurrentView={setCurrentView} onLogout={handleLogout} />;
   }
 
   return (
     <CartProvider>
-      <div className="min-h-screen bg-white flex flex-col justify-between">
+      <div className="min-h-screen bg-white flex flex-col">
         <Navbar
           currentView={currentView}
           setCurrentView={setCurrentView}
@@ -104,34 +95,30 @@ function App() {
         />
 
         <main className="flex-1">
-          {currentView === 'home' ? (
+          {currentView === 'home' && (
             <>
               <Hero />
               <Categories onSelectCategory={() => setCurrentView('productos')} />
               <OurWork />
             </>
-          ) : currentView === 'login' ? (
-            <Login setCurrentView={setCurrentView} onLogin={handleLogin} />
-          ) : currentView === 'register' ? (
-            <Register setCurrentView={setCurrentView} onLogin={handleLogin} />
-          ) : currentView === 'producto_detalle' ? (
-            <ProductDetail setCurrentView={setCurrentView} />
-          ) : currentView === 'carrito' ? (
-            <CartView setCurrentView={setCurrentView} />
-          ) : currentView === 'confirmacion' ? (
-            <OrderConfirmationView setCurrentView={setCurrentView} />
-          ) : (
-            <Products onSelectProduct={() => setCurrentView('producto_detalle')} />
           )}
+          {currentView === 'login' && <Login setCurrentView={setCurrentView} onLogin={handleLogin} />}
+          {currentView === 'register' && <Register setCurrentView={setCurrentView} onLogin={handleLogin} />}
+          {currentView === 'productos' && <Products onSelectProduct={goToProduct} />}
+          {currentView === 'producto_detalle' && <ProductDetail product={selectedProduct} setCurrentView={setCurrentView} />}
+          {currentView === 'carrito' && <CartView setCurrentView={setCurrentView} />}
+          {currentView === 'confirmacion' && <OrderConfirmationView setCurrentView={setCurrentView} user={user} />}
+          {currentView === 'perfil' && <UserProfileView user={user} setCurrentView={setCurrentView} />}
         </main>
 
         <Footer />
 
+        {/* Botón flotante WhatsApp */}
         <a
           href="https://wa.me/584146146237"
           target="_blank"
           rel="noopener noreferrer"
-          className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-green-500 hover:bg-green-600 rounded-full flex items-center justify-center shadow-xl shadow-green-500/30 hover:scale-110 transition-all duration-300 animate-bounce-slow"
+          className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-green-500 hover:bg-green-600 rounded-full flex items-center justify-center shadow-xl shadow-green-500/30 hover:scale-110 transition-all duration-300"
           aria-label="Contactar por WhatsApp"
         >
           <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">

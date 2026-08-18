@@ -4,7 +4,6 @@ import empaquesLujo from '../assets/empaques_lujo.png';
 import pequenos from '../assets/pequenos.png';
 import unicolor from '../assets/unicolor.png';
 import portavasos from '../assets/portavasos.png';
-import trabajoCumple from '../assets/trabajo_cumple.png';
 
 export const categoriesList = [
   { id: 'all', name: 'Todas las categorías', image: empaquesLujo },
@@ -16,7 +15,6 @@ export const categoriesList = [
 ];
 
 export const productsData = [
-  // Destacados
   {
     id: 1,
     name: 'Caja Happy Day Corazón',
@@ -25,8 +23,20 @@ export const productsData = [
     categoryName: 'Empaques de lujo',
     image: sampleHappyday,
     featured: true,
-    description: 'Hermosa caja en forma de corazón con diseño "Happy Day", ideal para regalos de aniversario o San Valentín.',
-    badge: 'Destacado'
+    forYou: true,
+    description: 'Hermosa caja en forma de corazón con diseño "Happy Day", ideal para regalos de aniversario o San Valentín. Material de alta calidad, acabado premium.',
+    badge: 'Destacado',
+    sizes: ['P', 'M', 'G', 'EG'],
+    colors: [
+      { name: 'Rosa', hex: '#EF5350', image: sampleHappyday },
+      { name: 'Rojo', hex: '#C62828', image: sampleHappyday },
+      { name: 'Blanco', hex: '#FFFFFF', image: sampleHappyday },
+    ],
+    reviews: [
+      { author: 'María G.', rating: 5, comment: 'Hermosa caja, llegó perfecta y bien presentada!', date: '2025-06-10' },
+      { author: 'Carlos R.', rating: 4, comment: 'Excelente calidad, mi novia quedó encantada.', date: '2025-07-02' },
+    ],
+    stock: 15,
   },
   {
     id: 2,
@@ -36,189 +46,100 @@ export const productsData = [
     categoryName: 'Empaques de lujo',
     image: sampleCasita,
     featured: true,
-    description: 'Caja decorativa tipo casita con ventanas transparentes e ilustración vintage de bicicleta y plantas.',
-    badge: 'Destacado'
+    forYou: true,
+    description: 'Caja decorativa tipo casita con ventanas transparentes e ilustración vintage de bicicleta y plantas. Perfecta para detalles especiales.',
+    badge: 'Destacado',
+    sizes: ['P', 'M', 'G'],
+    colors: [
+      { name: 'Natural', hex: '#D7CCC8', image: sampleCasita },
+      { name: 'Blanco', hex: '#FFFFFF', image: sampleCasita },
+    ],
+    reviews: [
+      { author: 'Laura M.', rating: 5, comment: 'Muy original y resistente. Perfecto para mi regalo.', date: '2025-08-01' },
+    ],
+    stock: 8,
   },
   {
     id: 3,
-    name: 'Caja de Lujo Premium Gold',
-    price: 89.99,
-    category: 'especial',
-    categoryName: 'Microcorrugados',
-    image: empaquesLujo,
-    featured: true,
-    description: 'Caja dorada de textura brillante con acabados finos y cierre magnético.',
-    badge: 'Destacado'
+    name: 'Caja Unicolor Kraft',
+    price: 45.00,
+    category: 'unicolor',
+    categoryName: 'Unicolor',
+    image: unicolor,
+    featured: false,
+    forYou: true,
+    description: 'Caja unicolor en papel kraft natural, minimalista y elegante. Ideal para empresas y marcas que buscan un empaque sencillo pero sofisticado.',
+    badge: null,
+    sizes: ['P', 'M', 'G', 'EG'],
+    colors: [
+      { name: 'Kraft', hex: '#A1887F', image: unicolor },
+      { name: 'Negro', hex: '#212121', image: unicolor },
+      { name: 'Blanco', hex: '#FFFFFF', image: unicolor },
+    ],
+    reviews: [],
+    stock: 30,
   },
-
-  // Para ti (Page 1)
   {
     id: 4,
-    name: 'Caja Corazón Romántica',
-    price: 89.99,
-    category: 'especial',
-    categoryName: 'Detalles (extracto)',
-    image: sampleHappyday,
+    name: 'Caja Unicolor Blanco Pequeña',
+    price: 35.00,
+    category: 'unicolor-blanco',
+    categoryName: 'Unicolor Blanco',
+    image: pequenos,
+    featured: false,
     forYou: true,
-    page: 1,
-    description: 'Empaque de amor de alta resistencia con asas ergonómicas y estampado de corazones blancos.'
+    description: 'Caja blanca de tamaño pequeño, perfecta para joyas, accesorios o pequeños obsequios. Acabado satinado y cierre magnético.',
+    badge: 'Nuevo',
+    sizes: ['P', 'M'],
+    colors: [
+      { name: 'Blanco', hex: '#FFFFFF', image: pequenos },
+      { name: 'Crema', hex: '#FFF8E1', image: pequenos },
+    ],
+    reviews: [
+      { author: 'Ana V.', rating: 5, comment: 'Perfecta para mis collares. La calidad es excelente.', date: '2025-07-15' },
+    ],
+    stock: 20,
   },
   {
     id: 5,
-    name: 'Caja Casita Ventana Transparente',
-    price: 89.99,
-    category: 'microcorrugados',
-    categoryName: 'Detalles (extracto)',
-    image: sampleCasita,
+    name: 'Portavasos Decorativo',
+    price: 25.00,
+    category: 'portavasos',
+    categoryName: 'Portavasos',
+    image: portavasos,
+    featured: false,
     forYou: true,
-    page: 1,
-    description: 'Excelente opción para repostería, figuras de colección o regalos creativos visibles.'
+    description: 'Portavasos decorativo en cartón prensado de alta resistencia. Viene en pack de 4 unidades con diferentes diseños.',
+    badge: null,
+    sizes: ['M'],
+    colors: [
+      { name: 'Natural', hex: '#BCAAA4', image: portavasos },
+      { name: 'Azul', hex: '#1565C0', image: portavasos },
+    ],
+    reviews: [],
+    stock: 50,
   },
   {
     id: 6,
-    name: 'Caja Unicolor Negra Elegante',
-    price: 89.99,
-    category: 'unicolor',
-    categoryName: 'Detalles (extracto)',
-    image: unicolor,
-    forYou: true,
-    page: 1,
-    description: 'Caja rígida tono negro mate de alta resistencia, adaptable a cualquier tipo de celebración corporativa o personal.'
-  },
-  {
-    id: 7,
-    name: 'Caja Mini Sorpresa Cumpleaños',
-    price: 89.99,
-    category: 'unicolor-blanco',
-    categoryName: 'Detalles (extracto)',
-    image: trabajoCumple,
-    forYou: true,
-    page: 1,
-    description: 'Mini cajita personalizada con lazo y tarjetas intercambiables.'
-  },
-  {
-    id: 8,
-    name: 'Portavasos Múltiple Ecológico',
-    price: 89.99,
-    category: 'portavasos',
-    categoryName: 'Detalles (extracto)',
-    image: portavasos,
-    forYou: true,
-    page: 1,
-    description: 'Base de cartón reforzado para transporte de bebidas y postres individuales.'
-  },
-  {
-    id: 9,
-    name: 'Caja Pequeños Detalles',
-    price: 89.99,
-    category: 'unicolor-blanco',
-    categoryName: 'Detalles (extracto)',
-    image: pequenos,
-    forYou: true,
-    page: 1,
-    description: 'Caja compacta blanca satinada ideal para bisutería y recuerdos.'
-  },
-
-  // Page 2
-  {
-    id: 10,
-    name: 'Caja Amor Happy Day Pink',
-    price: 89.99,
+    name: 'Caja Empaques de Lujo',
+    price: 120.00,
     category: 'especial',
-    categoryName: 'Detalles (extracto)',
-    image: sampleHappyday,
-    forYou: true,
-    page: 2,
-    description: 'Variación de color rojo vibrante con asas de corazón.'
-  },
-  {
-    id: 11,
-    name: 'Caja Casita Jardín',
-    price: 89.99,
-    category: 'microcorrugados',
-    categoryName: 'Detalles (extracto)',
-    image: sampleCasita,
-    forYou: true,
-    page: 2,
-    description: 'Diseño arquitectónico con gran visualización frontal y lateral.'
-  },
-  {
-    id: 12,
-    name: 'Caja Regalo Lujo Especial',
-    price: 89.99,
-    category: 'especial',
-    categoryName: 'Detalles (extracto)',
+    categoryName: 'Empaques de lujo',
     image: empaquesLujo,
-    forYou: true,
-    page: 2,
-    description: 'Empaque de lujo reforzado con cinta decorativa satinada.'
+    featured: true,
+    forYou: false,
+    description: 'Nuestra caja premium para regalos corporativos y eventos de lujo. Material rígido de alta calidad con acabado brillante y cinta de satén incluida.',
+    badge: 'Premium',
+    sizes: ['M', 'G', 'EG'],
+    colors: [
+      { name: 'Negro', hex: '#212121', image: empaquesLujo },
+      { name: 'Dorado', hex: '#F9A825', image: empaquesLujo },
+      { name: 'Blanco', hex: '#FFFFFF', image: empaquesLujo },
+    ],
+    reviews: [
+      { author: 'José P.', rating: 5, comment: 'Impresionante presentación, mis clientes quedaron fascinados.', date: '2025-05-20' },
+      { author: 'Sofía L.', rating: 5, comment: 'Para eventos corporativos, simplemente perfecta.', date: '2025-06-18' },
+    ],
+    stock: 5,
   },
-  {
-    id: 13,
-    name: 'Caja Unicolor Premium Matte',
-    price: 89.99,
-    category: 'unicolor',
-    categoryName: 'Detalles (extracto)',
-    image: unicolor,
-    forYou: true,
-    page: 2,
-    description: 'Diseño limpio y moderno para grabados o stickers personalizados.'
-  },
-  {
-    id: 14,
-    name: 'Set Portavasos x4',
-    price: 89.99,
-    category: 'portavasos',
-    categoryName: 'Detalles (extracto)',
-    image: portavasos,
-    forYou: true,
-    page: 2,
-    description: 'Portavasos doble compartimiento en cartón microcorrugado.'
-  },
-  {
-    id: 15,
-    name: 'Cajita Dulces Pequeños',
-    price: 89.99,
-    category: 'unicolor-blanco',
-    categoryName: 'Detalles (extracto)',
-    image: pequenos,
-    forYou: true,
-    page: 2,
-    description: 'Ideal para macarons, trufas y bombones de chocolate.'
-  },
-
-  // Page 3
-  {
-    id: 16,
-    name: 'Caja Happy Day Edición Limitada',
-    price: 89.99,
-    category: 'especial',
-    categoryName: 'Detalles (extracto)',
-    image: sampleHappyday,
-    forYou: true,
-    page: 3,
-    description: 'Edición especial de San Valentín con acabado barnizado.'
-  },
-  {
-    id: 17,
-    name: 'Caja Casita Infantil',
-    price: 89.99,
-    category: 'microcorrugados',
-    categoryName: 'Detalles (extracto)',
-    image: sampleCasita,
-    forYou: true,
-    page: 3,
-    description: 'Perfecta para fiestas infantiles y recuerdos de cumpleaños.'
-  },
-  {
-    id: 18,
-    name: 'Caja Lujo Acabado Espejo',
-    price: 89.99,
-    category: 'especial',
-    categoryName: 'Detalles (extracto)',
-    image: empaquesLujo,
-    forYou: true,
-    page: 3,
-    description: 'Caja con efecto espejo brillante y cierre seguro.'
-  }
 ];

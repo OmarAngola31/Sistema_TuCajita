@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { syncUserProfile } from '../services/dbService';
-import smileyImg from '../assets/smiley_emoji.jpg';
 
 export default function Login({ setCurrentView, onLogin }) {
   const [email, setEmail] = useState('');
@@ -14,57 +13,53 @@ export default function Login({ setCurrentView, onLogin }) {
     setError(null);
     setLoading(true);
 
-    // Validación directa del Administrador
+    // ── Admin rápido ──
     if (
       (email.trim().toLowerCase() === 'admin' || email.trim().toLowerCase() === 'admin@tucajita.com') &&
       password === 'admin123'
     ) {
-      const adminData = { type: 'admin', role: 'admin', name: 'Administrador Tu Cajita', email: 'admin@tucajita.com' };
-      onLogin(adminData);
+      onLogin({ type: 'admin', role: 'admin', name: 'Administrador Tu Cajita', email: 'admin@tucajita.com' });
       setCurrentView('admin');
       setLoading(false);
       return;
     }
 
+    // ── Asesor rápido ──
+    if (
+      (email.trim().toLowerCase() === 'asesor' || email.trim().toLowerCase() === 'asesor@tucajita.com') &&
+      password === 'asesor123'
+    ) {
+      onLogin({ type: 'asesor', role: 'asesor', name: 'Asesor Tu Cajita', email: 'asesor@tucajita.com' });
+      setCurrentView('home');
+      setLoading(false);
+      return;
+    }
+
     if (!supabase) {
-      // Si no hay Supabase configurado todavía, permitir login cliente
-      onLogin({ type: 'client', role: 'client', name: email.split('@')[0] || 'Cliente' });
+      onLogin({ type: 'client', role: 'client', name: email.split('@')[0] || 'Cliente', email });
       setCurrentView('home');
       setLoading(false);
       return;
     }
 
     try {
-      const { data, error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
+      const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
       if (authError) throw authError;
 
-      // Verificar si es admin o cliente
-      const isUserAdmin =
-        email.includes('admin') ||
-        data.user?.user_metadata?.role === 'admin';
-
+      const role = data.user?.user_metadata?.role || (email.includes('admin') ? 'admin' : email.includes('asesor') ? 'asesor' : 'client');
       const userData = {
         id: data.user?.id,
-        type: isUserAdmin ? 'admin' : 'client',
-        role: isUserAdmin ? 'admin' : 'client',
+        type: role,
+        role,
         name: data.user?.user_metadata?.full_name || email.split('@')[0] || 'Usuario',
         email: data.user?.email || email,
       };
 
-      // Guardar / sincronizar perfil en Supabase
-      await syncUserProfile(data.user, { name: userData.name, role: userData.role });
-
+      await syncUserProfile(data.user, { name: userData.name, role });
       onLogin(userData);
 
-      if (isUserAdmin) {
-        setCurrentView('admin');
-      } else {
-        setCurrentView('home');
-      }
+      if (role === 'admin') setCurrentView('admin');
+      else setCurrentView('home');
     } catch (err) {
       setError(err.message || 'Error al iniciar sesión. Verifica tus credenciales.');
     } finally {
@@ -72,115 +67,67 @@ export default function Login({ setCurrentView, onLogin }) {
     }
   };
 
-  // Quick 1-click admin login
-  const handleQuickAdminLogin = () => {
-    const adminData = { type: 'admin', role: 'admin', name: 'Administrador Tu Cajita', email: 'admin@tucajita.com' };
-    onLogin(adminData);
-    setCurrentView('admin');
-  };
-
   return (
-    <div className="min-h-screen pt-24 pb-12 flex flex-col items-center justify-center bg-white px-4">
-      <div className="w-full max-w-md flex flex-col items-center">
-        {/* Smiley Emoji */}
-        <img src={smileyImg} alt="Smiley" className="w-28 h-28 md:w-32 md:h-32 object-contain mb-4" />
+    <div className="min-h-screen flex items-center justify-center bg-white px-4 pt-20 pb-16">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-black text-gray-900">Iniciar sesión</h1>
+          <p className="text-sm text-gray-500 mt-2">Ingresa a tu cuenta de Tu Cajita</p>
+        </div>
 
-        <h1
-          className="text-3xl md:text-4xl font-bold text-gray-900 mb-2"
-          style={{ fontFamily: "'Fredoka One', 'Segoe UI', cursive" }}
-        >
-          Iniciar Sesion
-        </h1>
-        <p className="text-xs text-gray-500 mb-6 text-center font-medium">
-          Accede a tu cuenta de cliente o panel administrativo
-        </p>
-
-        <form onSubmit={handleLogin} className="w-full space-y-5">
+        <form onSubmit={handleLogin} className="bg-white border border-gray-100 rounded-3xl shadow-sm p-8 space-y-4">
           {error && (
-            <div className="p-3 bg-red-100 text-red-600 rounded-xl text-xs font-semibold animate-[fadeIn_0.3s_ease]">
+            <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl">
               {error}
             </div>
           )}
 
-          {/* Email / Usuario */}
           <div>
-            <div className="flex justify-between items-center mb-1">
-              <label className="text-sm font-semibold text-gray-800">Email / Usuario</label>
-              <button
-                type="button"
-                onClick={() => alert('Para soporte o restablecer contraseña, contáctanos por WhatsApp')}
-                className="text-xs font-bold text-gray-900 hover:underline cursor-pointer bg-transparent border-none p-0"
-              >
-                ¿Olvidaste tu contraseña?
-              </button>
-            </div>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg className="h-5 w-5 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
-                  <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
-                </svg>
-              </div>
-              <input
-                type="text"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-10 pr-4 py-3.5 bg-[#87e8f7] rounded-xl text-gray-900 placeholder-gray-600 font-medium text-base outline-none border-none transition-all duration-200 focus:ring-2 focus:ring-[#00cbf4]"
-                placeholder="Ingresa tu correo o 'admin'"
-                required
-              />
-            </div>
+            <label className="text-xs font-bold text-gray-700 block mb-1.5">Correo electrónico</label>
+            <input
+              type="text"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="correo@ejemplo.com"
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#00C2FF]/40"
+              required
+            />
           </div>
 
-          {/* Contraseña */}
           <div>
-            <label className="block text-sm font-semibold text-gray-800 mb-1">Contraseña</label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg className="h-5 w-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-              </div>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-10 pr-4 py-3.5 bg-[#87e8f7] rounded-xl text-gray-900 placeholder-gray-600 font-medium text-base outline-none border-none transition-all duration-200 focus:ring-2 focus:ring-[#00cbf4]"
-                placeholder="Ingresa tu contraseña"
-                required
-              />
-            </div>
+            <label className="text-xs font-bold text-gray-700 block mb-1.5">Contraseña</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#00C2FF]/40"
+              required
+            />
           </div>
 
-          {/* Botón Ingresar */}
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-4 mt-3 bg-[#00cbf4] hover:bg-[#00b8dd] text-white font-bold text-xl rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+            className="w-full py-3.5 bg-[#00C2FF] hover:bg-[#00A8DE] text-white font-black rounded-2xl shadow text-sm transition disabled:opacity-70 flex items-center justify-center gap-2"
           >
-            {loading ? 'Ingresando...' : 'Ingresar'}
+            {loading ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Ingresando...</> : 'Iniciar sesión'}
+          </button>
+
+          <button type="button" onClick={() => setCurrentView('register')} className="w-full text-center text-sm text-gray-500 hover:text-[#00C2FF] transition font-semibold">
+            ¿No tienes cuenta? Regístrate
           </button>
         </form>
 
-        {/* Toggle a Registrarse */}
-        <p className="mt-6 text-sm font-medium text-gray-600">
-          ¿No tienes una cuenta aún?{' '}
-          <button
-            onClick={() => setCurrentView('register')}
-            className="font-bold text-gray-900 hover:underline cursor-pointer bg-transparent border-none p-0"
-          >
-            Regístrate aquí
-          </button>
-        </p>
-
-        {/* 1-Click Admin Button */}
-        <button
-          onClick={handleQuickAdminLogin}
-          className="mt-4 p-3 bg-teal-50 hover:bg-teal-100 border border-teal-300 rounded-2xl text-center text-xs text-teal-900 font-bold w-full transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
-        >
-          <span>⚡</span>
-          <span>Probar Vista Administrativa (1 Clic)</span>
-        </button>
+        {/* Accesos rápidos para pruebas */}
+        <div className="mt-4 space-y-2">
+          <p className="text-center text-xs text-gray-400 font-semibold">Accesos rápidos (desarrollo)</p>
+          <div className="grid grid-cols-3 gap-2">
+            <button onClick={() => { setEmail('admin@tucajita.com'); setPassword('admin123'); }} className="py-2 bg-green-100 hover:bg-green-200 text-green-800 rounded-xl text-xs font-bold transition">🛡️ Admin</button>
+            <button onClick={() => { setEmail('asesor@tucajita.com'); setPassword('asesor123'); }} className="py-2 bg-purple-100 hover:bg-purple-200 text-purple-800 rounded-xl text-xs font-bold transition">💼 Asesor</button>
+            <button onClick={() => { setEmail('cliente@test.com'); setPassword('cliente123'); }} className="py-2 bg-cyan-100 hover:bg-cyan-200 text-cyan-800 rounded-xl text-xs font-bold transition">👤 Cliente</button>
+          </div>
+        </div>
       </div>
     </div>
   );

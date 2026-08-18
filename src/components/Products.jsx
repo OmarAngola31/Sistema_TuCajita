@@ -1,17 +1,12 @@
 import { useState, useRef } from 'react';
 import { productsData, categoriesList } from '../data/productsData';
-import empaquesLujo from '../assets/empaques_lujo.png';
-import sampleCasita from '../assets/sample_casita.png';
-import sampleHappyday from '../assets/sample_happyday.png';
-import logo from '../assets/logo.png';
 
-export default function Products() {
+// ✅ Acepta onSelectProduct para navegar al detalle
+export default function Products({ onSelectProduct }) {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('default');
   const [currentPage, setCurrentPage] = useState(1);
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [selectedQty, setSelectedQty] = useState(1);
   const [activeBannerSlide, setActiveBannerSlide] = useState(0);
 
   const categoryScrollRef = useRef(null);
@@ -23,11 +18,10 @@ export default function Products() {
     }
   };
 
-  // Filter products
+  // Filtrar productos
   const filterProducts = (items) => {
     return items.filter((item) => {
-      const matchesCategory =
-        selectedCategory === 'all' || item.category === selectedCategory;
+      const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
       const matchesSearch =
         item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.categoryName.toLowerCase().includes(searchTerm.toLowerCase());
@@ -35,7 +29,7 @@ export default function Products() {
     });
   };
 
-  // Sort products
+  // Ordenar productos
   const sortProducts = (items) => {
     const list = [...items];
     if (sortBy === 'price-low') return list.sort((a, b) => a.price - b.price);
@@ -54,25 +48,96 @@ export default function Products() {
     currentPage * itemsPerPage
   );
 
+  // ✅ WhatsApp con número correcto
   const handleWhatsAppOrder = (product) => {
     const message = encodeURIComponent(
-      `¡Hola! Quisiera información y pedir ${selectedQty} unidad(es) de: *${product.name}* (Precio: $${(product.price * selectedQty).toFixed(2)})`
+      `¡Hola Tu Cajita! 👋 Quisiera información sobre: *${product.name}* (Precio: $${product.price.toFixed(2)})`
     );
-    window.open(`https://wa.me/584247465717?text=${message}`, '_blank');
+    window.open(`https://wa.me/584146146237?text=${message}`, '_blank');
   };
+
+  // Tarjeta de producto reutilizable
+  const ProductCard = ({ product }) => (
+    <div className="bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group">
+      {/* Imagen */}
+      <div
+        className="relative h-48 sm:h-52 bg-[#f8fafc] flex items-center justify-center p-4 cursor-pointer"
+        onClick={() => onSelectProduct && onSelectProduct(product)}
+      >
+        <img
+          src={product.image}
+          alt={product.name}
+          className="max-h-full object-contain group-hover:scale-105 transition-transform duration-300 drop-shadow"
+        />
+        {product.badge && (
+          <span className="absolute top-3 left-3 bg-[#FFD54F] text-gray-900 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow">
+            {product.badge}
+          </span>
+        )}
+        {product.stock <= 10 && (
+          <span className="absolute top-3 right-3 bg-orange-100 text-orange-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+            ⚡ {product.stock} disp.
+          </span>
+        )}
+      </div>
+
+      {/* Info */}
+      <div className="p-4">
+        <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mb-1">
+          {product.categoryName}
+        </p>
+        <h3
+          className="font-black text-gray-900 text-sm leading-tight mb-1 cursor-pointer hover:text-[#00C2FF] transition-colors"
+          onClick={() => onSelectProduct && onSelectProduct(product)}
+        >
+          {product.name}
+        </h3>
+
+        {/* Tallas disponibles */}
+        {product.sizes && (
+          <div className="flex gap-1.5 mb-2 flex-wrap">
+            {product.sizes.map((s) => (
+              <span key={s} className="text-[10px] font-bold bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded-md">
+                {s}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Colores */}
+        {product.colors && (
+          <div className="flex gap-1.5 mb-3">
+            {product.colors.map((c, i) => (
+              <span
+                key={i}
+                title={c.name}
+                className="w-4 h-4 rounded-full border border-white shadow-sm"
+                style={{ backgroundColor: c.hex }}
+              />
+            ))}
+          </div>
+        )}
+
+        <div className="flex items-center justify-between mt-2">
+          <span className="text-lg font-black text-gray-900">${product.price.toFixed(2)}</span>
+          <button
+            onClick={() => onSelectProduct && onSelectProduct(product)}
+            className="px-4 py-2 bg-[#00C2FF] hover:bg-[#00A8DE] text-white font-bold rounded-xl text-xs transition active:scale-95"
+          >
+            Ver detalles
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <section id="productos" className="pt-24 pb-16 bg-white min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-        {/* ═══════════════════════════════════════════ */}
-        {/* 1. HEADER: Descubre + Explora */}
-        {/* ═══════════════════════════════════════════ */}
+        {/* ─── Header ─── */}
         <div className="flex items-center justify-between mb-4 pt-2">
-          <h1
-            className="text-3xl sm:text-4xl font-black text-gray-900 tracking-tight"
-            style={{ fontFamily: "'Fredoka One', cursive" }}
-          >
+          <h1 className="text-3xl sm:text-4xl font-black text-gray-900 tracking-tight" style={{ fontFamily: "'Fredoka One', cursive" }}>
             Descubre
           </h1>
           <span className="text-gray-900 font-bold text-xs sm:text-sm md:text-base">
@@ -80,393 +145,142 @@ export default function Products() {
           </span>
         </div>
 
-        {/* ═══════════════════════════════════════════ */}
-        {/* 2. SEARCH BAR + FILTROS (ORDENAR POR) */}
-        {/* ═══════════════════════════════════════════ */}
+        {/* ─── Buscador + Ordenar ─── */}
         <div className="flex items-center justify-between gap-3 sm:gap-6 mb-6">
-          {/* Search Input */}
           <div className="relative flex-1 flex items-center bg-[#f3f4f6] rounded-full px-4 py-2.5 sm:py-3 shadow-inner border border-gray-200">
-            <svg className="w-5 h-5 text-gray-600 mr-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            <svg className="w-5 h-5 text-gray-400 mr-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <input
               type="text"
               placeholder="Buscar productos"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-transparent border-none text-gray-800 placeholder-gray-500 font-medium focus:outline-none text-xs sm:text-sm md:text-base"
+              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+              className="w-full bg-transparent border-none text-gray-800 placeholder-gray-400 font-medium focus:outline-none text-xs sm:text-sm"
             />
-            <button className="text-gray-600 hover:text-gray-900 transition-colors p-1 flex-shrink-0">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </button>
           </div>
 
-          {/* Filter & Ordenar Por */}
           <div className="flex flex-col items-end flex-shrink-0">
-            <div className="flex items-center gap-1.5 cursor-pointer">
-              {/* Funnel Icon */}
-              <svg className="w-5 h-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-              </svg>
-              {/* Badge 0 */}
-              <span className="bg-[#858f9f] text-white text-[10px] sm:text-xs font-bold px-1.5 py-0.5 rounded shadow-sm">
-                0
-              </span>
-            </div>
-            {/* Dropdown Ordenar por */}
-            <div className="flex items-center gap-1 mt-0.5">
-              <span className="text-[11px] sm:text-xs font-bold text-gray-900 whitespace-nowrap">Ordenar por</span>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="bg-transparent border-none text-[11px] sm:text-xs font-semibold text-gray-600 focus:outline-none cursor-pointer"
-              >
-                <option value="default">Relevancia</option>
-                <option value="price-low">Menor Precio</option>
-                <option value="price-high">Mayor Precio</option>
-                <option value="name">Nombre</option>
-              </select>
-            </div>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="text-xs font-bold text-gray-700 bg-white border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#00C2FF]/30 cursor-pointer"
+            >
+              <option value="default">Ordenar por</option>
+              <option value="price-low">Precio: menor a mayor</option>
+              <option value="price-high">Precio: mayor a menor</option>
+              <option value="name">Nombre A-Z</option>
+            </select>
           </div>
         </div>
 
-        {/* ═══════════════════════════════════════════ */}
-        {/* 3. CATEGORY CAROUSEL (Miniaturas + Pills) */}
-        {/* ═══════════════════════════════════════════ */}
-        <div className="relative mb-10">
-          {/* Left arrow */}
+        {/* ─── Filtro de Categorías ─── */}
+        <div className="relative mb-8">
           <button
             onClick={() => scrollCategories('left')}
-            className="absolute -left-3 top-1/2 -translate-y-1/2 z-10 w-8 h-8 sm:w-9 sm:h-9 bg-white shadow-md border border-gray-200 rounded-full flex items-center justify-center text-gray-700 hover:bg-amber-50 hover:text-amber-600 transition-all cursor-pointer"
-            aria-label="Anterior"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 bg-white rounded-full shadow-md flex items-center justify-center text-gray-600 hover:text-gray-900 transition"
+          >‹</button>
 
-          {/* Carousel container */}
           <div
             ref={categoryScrollRef}
-            className="flex items-center gap-4 sm:gap-6 overflow-x-auto py-2 px-6 scroll-smooth scrollbar-none"
+            className="flex gap-3 overflow-x-auto scroll-smooth pb-2 px-10"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
-            {categoriesList.slice(1).map((cat) => {
-              const isSelected = selectedCategory === cat.id;
-              return (
-                <div
-                  key={cat.id}
-                  onClick={() => setSelectedCategory(isSelected ? 'all' : cat.id)}
-                  className="flex flex-col items-center flex-shrink-0 cursor-pointer group transition-transform duration-300 hover:scale-105"
-                >
-                  {/* Category Image Box */}
-                  <div className={`w-18 h-18 sm:w-22 sm:h-22 bg-white rounded-2xl p-2 shadow-sm border flex items-center justify-center mb-2 transition-all ${
-                    isSelected ? 'border-[#00c2ff] ring-2 ring-[#00c2ff]/30 shadow-md' : 'border-gray-100 group-hover:shadow-md'
-                  }`}>
-                    <img
-                      src={cat.image}
-                      alt={cat.name}
-                      className="w-full h-full object-contain"
-                    />
-                  </div>
-
-                  {/* Cyan Pill Badge */}
-                  <span
-                    className={`px-3 sm:px-4 py-1 rounded-full text-[10px] sm:text-xs font-black shadow-sm transition-all text-white text-center whitespace-nowrap ${
-                      isSelected
-                        ? 'bg-sky-600 shadow-md scale-105'
-                        : 'bg-[#00c2ff] hover:bg-[#00b0e6]'
-                    }`}
-                  >
-                    {cat.name}
-                  </span>
+            {categoriesList.map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => { setSelectedCategory(cat.id); setCurrentPage(1); }}
+                className={`flex-shrink-0 flex flex-col items-center gap-2 px-4 py-2.5 rounded-2xl border-2 transition-all ${
+                  selectedCategory === cat.id
+                    ? 'border-[#00C2FF] bg-[#D2E7EA] shadow-sm'
+                    : 'border-transparent bg-gray-50 hover:bg-gray-100'
+                }`}
+              >
+                <div className="w-12 h-12 rounded-xl overflow-hidden bg-white">
+                  <img src={cat.image} alt={cat.name} className="w-full h-full object-cover" />
                 </div>
-              );
-            })}
+                <span className="text-[10px] font-bold text-gray-700 text-center leading-tight max-w-[72px]">
+                  {cat.name}
+                </span>
+              </button>
+            ))}
           </div>
 
-          {/* Right arrow */}
           <button
             onClick={() => scrollCategories('right')}
-            className="absolute -right-3 top-1/2 -translate-y-1/2 z-10 w-8 h-8 sm:w-9 sm:h-9 bg-white shadow-md border border-gray-200 rounded-full flex items-center justify-center text-gray-700 hover:bg-amber-50 hover:text-amber-600 transition-all cursor-pointer"
-            aria-label="Siguiente"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 bg-white rounded-full shadow-md flex items-center justify-center text-gray-600 hover:text-gray-900 transition"
+          >›</button>
         </div>
 
-        {/* ═══════════════════════════════════════════ */}
-        {/* 4. PROMOCIONES */}
-        {/* ═══════════════════════════════════════════ */}
-        <div className="mb-12">
-          <h2
-            className="text-2xl sm:text-3xl font-black text-gray-900 mb-5"
-            style={{ fontFamily: "'Fredoka One', cursive" }}
-          >
-            Promociones
-          </h2>
-
-          <div className="relative overflow-hidden rounded-3xl bg-white border border-gray-100 shadow-md p-6 sm:p-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 items-center gap-6">
-              
-              {/* Promo Left Details */}
-              <div className="space-y-3">
-                <div className="inline-flex items-center gap-2 bg-[#ffdd00] text-gray-900 font-black text-[11px] sm:text-xs uppercase tracking-wider px-3 py-1 rounded-full shadow-sm">
-                  <svg className="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                  </svg>
-                  SPECIAL PROMO
-                </div>
-
-                <h3 className="text-2xl sm:text-4xl font-black text-[#0f172a] tracking-tight leading-tight">
-                  HASTA AGOTAR EXISTENCIA
-                </h3>
-
-                <p className="text-sm sm:text-base font-bold italic text-gray-800">
-                  Dos tamaños disponibles
-                </p>
-
-                <p className="text-xs sm:text-sm font-semibold italic text-gray-500">
-                  Efecto espejo
-                </p>
-
-                {/* Brand & Social */}
-                <div className="flex items-center gap-3 pt-2">
-                  <img src={logo} alt="Tu Cajita" className="w-10 h-10 object-contain" />
-                  <div>
-                    <p className="text-xs font-bold text-gray-800">DISTRIBUIDORA</p>
-                    <p className="text-[10px] text-gray-500">+58 424 7465717</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Promo Right Boxes Graphic */}
-              <div className="relative flex items-center justify-center gap-4">
-                <img
-                  src={empaquesLujo}
-                  alt="Promoción cajas"
-                  className="max-h-48 sm:max-h-60 object-contain drop-shadow-xl hover:scale-105 transition-transform duration-500"
-                />
-              </div>
-
+        {/* ─── Productos Destacados ─── */}
+        {featuredItems.length > 0 && (
+          <div className="mb-10">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-black text-gray-900">⭐ Destacados</h2>
             </div>
-
-            {/* Carousel Dots */}
-            <div className="flex justify-center gap-1.5 mt-6">
-              {[0, 1, 2].map((idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setActiveBannerSlide(idx)}
-                  className={`h-2 rounded-full transition-all ${
-                    activeBannerSlide === idx ? 'bg-[#00c2ff] w-6' : 'bg-gray-300 w-2'
-                  }`}
-                  aria-label={`Slide ${idx + 1}`}
-                />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {featuredItems.slice(0, 3).map((product) => (
+                <ProductCard key={product.id} product={product} />
               ))}
             </div>
           </div>
-        </div>
+        )}
 
-        {/* ═══════════════════════════════════════════ */}
-        {/* 5. DESTACADOS (Tarjetas Cream) */}
-        {/* ═══════════════════════════════════════════ */}
-        <div className="mb-14">
-          <h2
-            className="text-2xl sm:text-3xl font-black text-gray-900 mb-6"
-            style={{ fontFamily: "'Fredoka One', cursive" }}
-          >
-            Destacados
-          </h2>
-
-          {featuredItems.length === 0 ? (
-            <p className="text-gray-500 italic">No se encontraron productos destacados.</p>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-6">
-              {featuredItems.map((product) => (
-                <div
-                  key={product.id}
-                  onClick={() => setSelectedProduct(product)}
-                  className="bg-[#FFFBEB] rounded-3xl p-4 sm:p-5 shadow-sm border border-amber-100 hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 cursor-pointer flex flex-col justify-between group"
-                >
-                  {/* Image Container */}
-                  <div className="bg-white rounded-2xl p-3 sm:p-4 aspect-square flex items-center justify-center shadow-inner mb-3 overflow-hidden">
-                    <img
-                      src={product.image}
-                      alt={product.name}
-                      className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500"
-                    />
-                  </div>
-
-                  {/* Info */}
-                  <div>
-                    <h3 className="font-extrabold text-base sm:text-lg text-gray-900 mb-0.5 truncate group-hover:text-amber-600 transition-colors">
-                      Producto
-                    </h3>
-                    <p className="text-base sm:text-xl font-black text-gray-800 mb-0.5">
-                      ${product.price.toFixed(2)}
-                    </p>
-                    <p className="text-[11px] sm:text-xs text-gray-500 font-medium truncate">
-                      {product.categoryName}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* ═══════════════════════════════════════════ */}
-        {/* 6. PARA TI (Tarjetas Cyan con Estrella ★) */}
-        {/* ═══════════════════════════════════════════ */}
-        <div className="mb-14">
-          <h2
-            className="text-2xl sm:text-3xl font-black text-gray-900 mb-6"
-            style={{ fontFamily: "'Fredoka One', cursive" }}
-          >
-            Para ti
-          </h2>
+        {/* ─── Para Ti ─── */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-black text-gray-900">🎁 Para ti</h2>
+            <span className="text-xs text-gray-500">
+              {forYouItemsAll.length} producto{forYouItemsAll.length !== 1 ? 's' : ''}
+            </span>
+          </div>
 
           {displayedForYou.length === 0 ? (
-            <p className="text-gray-500 italic">No hay productos en esta selección.</p>
+            <div className="text-center py-16 text-gray-400">
+              <div className="text-4xl mb-3">🔍</div>
+              <p className="text-sm font-semibold">No encontramos productos con ese criterio</p>
+              <button onClick={() => { setSearchTerm(''); setSelectedCategory('all'); }} className="mt-3 text-xs text-[#00C2FF] font-bold hover:underline">
+                Limpiar filtros
+              </button>
+            </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-6 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {displayedForYou.map((product) => (
-                <div
-                  key={product.id}
-                  onClick={() => setSelectedProduct(product)}
-                  className="relative bg-[#E0F7FA] rounded-3xl p-4 sm:p-5 shadow-sm border border-cyan-100 hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 cursor-pointer flex flex-col justify-between group"
-                >
-                  {/* Top Right Star Badge */}
-                  <div className="absolute top-3 right-3 z-10 w-7 h-7 sm:w-8 sm:h-8 bg-white rounded-full shadow-md flex items-center justify-center border border-amber-200">
-                    <span className="text-amber-400 text-sm sm:text-base font-bold">★</span>
-                  </div>
-
-                  {/* Image Container */}
-                  <div className="bg-white rounded-2xl p-3 sm:p-4 aspect-square flex items-center justify-center shadow-inner mb-3 overflow-hidden">
-                    <img
-                      src={product.image}
-                      alt={product.name}
-                      className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500"
-                    />
-                  </div>
-
-                  {/* Info */}
-                  <div>
-                    <h3 className="font-extrabold text-base sm:text-lg text-gray-900 mb-0.5 truncate group-hover:text-cyan-600 transition-colors">
-                      Producto
-                    </h3>
-                    <p className="text-base sm:text-xl font-black text-gray-800 mb-0.5">
-                      ${product.price.toFixed(2)}
-                    </p>
-                    <p className="text-[11px] sm:text-xs text-gray-500 font-medium truncate">
-                      {product.categoryName}
-                    </p>
-                  </div>
-                </div>
+                <ProductCard key={product.id} product={product} />
               ))}
             </div>
           )}
 
-          {/* Pagination Buttons (1, 2, 3) */}
+          {/* Paginación */}
           {totalPages > 1 && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center gap-2 mt-8">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 disabled:opacity-40 flex items-center justify-center text-gray-700 font-bold transition"
+              >‹</button>
               {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                 <button
                   key={page}
                   onClick={() => setCurrentPage(page)}
-                  className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl font-black text-xs sm:text-sm transition-all shadow-sm cursor-pointer ${
+                  className={`w-9 h-9 rounded-xl text-sm font-bold transition ${
                     currentPage === page
-                      ? 'bg-[#00c2ff] text-white shadow-md scale-105'
-                      : 'bg-cyan-100 text-cyan-800 hover:bg-cyan-200'
+                      ? 'bg-[#00C2FF] text-white shadow'
+                      : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
                   }`}
                 >
                   {page}
                 </button>
               ))}
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 disabled:opacity-40 flex items-center justify-center text-gray-700 font-bold transition"
+              >›</button>
             </div>
           )}
         </div>
-
       </div>
-
-      {/* ═══════════════════════════════════════════ */}
-      {/* MODAL DETALLE DE PRODUCTO */}
-      {/* ═══════════════════════════════════════════ */}
-      {selectedProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl relative border border-gray-100 overflow-hidden animate-[fadeIn_0.3s_ease]">
-            {/* Close button */}
-            <button
-              onClick={() => setSelectedProduct(null)}
-              className="absolute top-4 right-4 w-9 h-9 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-full flex items-center justify-center transition-colors font-bold text-lg cursor-pointer"
-              aria-label="Cerrar modal"
-            >
-              ✕
-            </button>
-
-            <div className="flex flex-col items-center text-center">
-              <div className="w-full h-56 bg-amber-50/60 rounded-2xl p-4 flex items-center justify-center mb-5 border border-amber-100">
-                <img
-                  src={selectedProduct.image}
-                  alt={selectedProduct.name}
-                  className="max-h-full max-w-full object-contain drop-shadow-md"
-                />
-              </div>
-
-              <span className="bg-amber-100 text-amber-800 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-2">
-                {selectedProduct.categoryName}
-              </span>
-
-              <h3 className="text-xl sm:text-2xl font-black text-gray-900 mb-1">
-                {selectedProduct.name}
-              </h3>
-
-              <p className="text-2xl sm:text-3xl font-black text-amber-600 mb-3">
-                ${selectedProduct.price.toFixed(2)}
-              </p>
-
-              <p className="text-gray-600 text-sm mb-5 leading-relaxed">
-                {selectedProduct.description}
-              </p>
-
-              {/* Quantity */}
-              <div className="flex items-center gap-3 mb-5">
-                <span className="text-sm font-bold text-gray-700">Cantidad:</span>
-                <div className="flex items-center border border-gray-300 rounded-xl overflow-hidden bg-gray-50">
-                  <button
-                    onClick={() => setSelectedQty((q) => Math.max(1, q - 1))}
-                    className="px-3 py-1.5 text-gray-700 hover:bg-gray-200 font-bold cursor-pointer"
-                  >
-                    −
-                  </button>
-                  <span className="px-4 py-1.5 font-bold text-gray-900">{selectedQty}</span>
-                  <button
-                    onClick={() => setSelectedQty((q) => q + 1)}
-                    className="px-3 py-1.5 text-gray-700 hover:bg-gray-200 font-bold cursor-pointer"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-
-              {/* WhatsApp button */}
-              <button
-                onClick={() => handleWhatsAppOrder(selectedProduct)}
-                className="w-full bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-bold py-3.5 px-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2 text-base cursor-pointer"
-              >
-                <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24">
-                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-                </svg>
-                Pedir por WhatsApp
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </section>
   );
 }
