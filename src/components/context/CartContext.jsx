@@ -20,7 +20,7 @@ const initialCartState = {
   items: [
     {
       id: 'caja-1',
-      name: 'Producto',
+      name: 'Caja de Lujo',
       price: 15.99,
       size: 'G',
       dimensions: '25,5 × 19 × 9cm (Internas)',
