@@ -11,7 +11,7 @@ export default function Hero() {
   return (
     <section
       id="inicio"
-      className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20"
+      className="relative min-h-[calc(100vh-80px)] flex items-center justify-center overflow-hidden py-12"
       style={{
         background: 'linear-gradient(135deg, #e8f4fd 0%, #fef9e7 30%, #e8f4fd 60%, #fef3cd 100%)',
       }}
@@ -24,31 +24,31 @@ export default function Hero() {
         <div className="absolute bottom-20 right-1/3 w-24 h-24 bg-blue-100/30 rounded-full animate-float delay-100" />
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center relative z-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 lg:gap-12 items-center relative z-10">
         {/* Left content */}
         <div
-          className={`text-center lg:text-left transition-all duration-1000 ${
+          className={`text-center md:text-left transition-all duration-1000 ${
             isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10'
           }`}
         >
-          <div className="inline-flex items-center gap-2 bg-amber-100/80 backdrop-blur-sm px-4 py-2 rounded-full mb-6">
+          <div className="inline-flex items-center gap-2 bg-amber-100/80 backdrop-blur-sm px-4 py-2 rounded-full mb-4 md:mb-6">
             <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
-            <span className="text-sm font-semibold text-amber-700">Distribuidores Oficiales</span>
+            <span className="text-xs sm:text-sm font-semibold text-amber-700">Distribuidores Oficiales</span>
           </div>
 
           <h1
-            className="text-5xl sm:text-6xl lg:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 leading-tight mb-4 tracking-tight"
+            className="text-4xl sm:text-5xl md:text-5xl lg:text-6xl xl:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 leading-tight mb-3 md:mb-4 tracking-tight"
             style={{ fontFamily: "'Fredoka One', cursive" }}
           >
             CLIENTES
           </h1>
 
           {/* Stars */}
-          <div className="flex items-center justify-center lg:justify-start gap-1 mb-6">
+          <div className="flex items-center justify-center md:justify-start gap-1 mb-4 md:mb-6">
             {[...Array(5)].map((_, i) => (
               <svg
                 key={i}
-                className="w-8 h-8 text-amber-400 drop-shadow-md animate-bounce-slow"
+                className="w-6 h-6 sm:w-8 sm:h-8 text-amber-400 drop-shadow-md animate-bounce-slow"
                 style={{ animationDelay: `${i * 0.1}s` }}
                 fill="currentColor"
                 viewBox="0 0 20 20"
@@ -59,26 +59,26 @@ export default function Hero() {
           </div>
 
           {/* Distribuidores badge */}
-          <div className="inline-flex flex-col sm:flex-row items-center gap-4 bg-white/70 backdrop-blur-sm rounded-2xl p-4 sm:p-5 shadow-xl shadow-amber-100/30 border border-amber-100/50 mb-6">
+          <div className="inline-flex flex-col sm:flex-row items-center gap-3 sm:gap-4 bg-white/70 backdrop-blur-sm rounded-2xl p-3 sm:p-4 md:p-5 shadow-xl shadow-amber-100/30 border border-amber-100/50 mb-4 md:mb-6">
             <div className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-amber-600 rounded-xl flex items-center justify-center shadow-md">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-br from-amber-400 to-amber-600 rounded-xl flex items-center justify-center shadow-md">
                 <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
                   <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
                   <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
                 </svg>
               </div>
-              <span className="text-sm font-bold text-amber-700 uppercase tracking-widest">Distribuidores</span>
+              <span className="text-xs sm:text-sm font-bold text-amber-700 uppercase tracking-widest">Distribuidores</span>
             </div>
             <div className="h-px sm:h-8 sm:w-px w-full bg-amber-200" />
-            <div className="flex flex-col gap-1.5 text-sm text-gray-600">
-              <a href="tel:+584247465717" className="flex items-center gap-2 hover:text-amber-600 transition-colors">
-                <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+            <div className="flex flex-col gap-1 text-xs sm:text-sm text-gray-600 text-left">
+              <a href="tel:+584120177993" className="flex items-center gap-1.5 hover:text-amber-600 transition-colors">
+                <svg className="w-4 h-4 text-green-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                   <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
                 </svg>
-                +58 424-7465717
+                +58 412-0177993
               </a>
-              <a href="mailto:info@tucajita.ve" className="flex items-center gap-2 hover:text-amber-600 transition-colors">
-                <svg className="w-4 h-4 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
+              <a href="mailto:info@tucajita.ve" className="flex items-center gap-1.5 hover:text-amber-600 transition-colors">
+                <svg className="w-4 h-4 text-amber-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                   <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
                   <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
                 </svg>
@@ -100,7 +100,7 @@ export default function Hero() {
             <img
               src={heroBg}
               alt="Productos de Tu Cajita - Cajas y empaques"
-              className="relative w-full max-w-lg mx-auto rounded-3xl shadow-2xl shadow-amber-200/30 hover:scale-[1.02] transition-transform duration-500"
+              className="relative w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl mx-auto rounded-3xl shadow-2xl shadow-amber-200/30 hover:scale-[1.02] transition-transform duration-500"
             />
           </div>
         </div>

@@ -53,14 +53,24 @@ export default function AdminDashboard({ user, setCurrentView, onLogout }) {
   // Modals & Active Edit Entities
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [imagePreview, setImagePreview] = useState('');
+  const [galleryPreviews, setGalleryPreviews] = useState([]);
   const [productForm, setProductForm] = useState({
     name: '',
     price: '',
     category: 'especial',
+    type: 'cajas',
     stock: 50,
+    minStock: 20,
     description: '',
     ref: '',
     medidas: '20x20x10 cm',
+    image: '',
+    gallery: [],
+    colors: ['coral', 'black', 'white'],
+    sizes: ['P', 'M', 'G', 'EG'],
+    featured: true,
+    forYou: true,
   });
 
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
@@ -112,6 +122,37 @@ export default function AdminDashboard({ user, setCurrentView, onLogout }) {
       setProductsList(prods);
     }
     loadData();
+
+    // Sincronizar reactivamente pedidos, facturas, transacciones, catálogo y stock
+    const handleProductsSync = (e) => {
+      if (e.detail) setProductsList(e.detail);
+    };
+    const handleOrdersSync = (e) => {
+      if (e.detail) setOrders(e.detail);
+    };
+    const handleInvoicesSync = (e) => {
+      if (e.detail) setInvoices(e.detail);
+    };
+    const handleTransactionsSync = (e) => {
+      if (e.detail) setTransactions(e.detail);
+    };
+    const handleStockSync = (e) => {
+      if (e.detail) setStockList(e.detail);
+    };
+
+    window.addEventListener('tucajita_products_updated', handleProductsSync);
+    window.addEventListener('tucajita_orders_updated', handleOrdersSync);
+    window.addEventListener('tucajita_invoices_updated', handleInvoicesSync);
+    window.addEventListener('tucajita_transactions_updated', handleTransactionsSync);
+    window.addEventListener('tucajita_stock_updated', handleStockSync);
+
+    return () => {
+      window.removeEventListener('tucajita_products_updated', handleProductsSync);
+      window.removeEventListener('tucajita_orders_updated', handleOrdersSync);
+      window.removeEventListener('tucajita_invoices_updated', handleInvoicesSync);
+      window.removeEventListener('tucajita_transactions_updated', handleTransactionsSync);
+      window.removeEventListener('tucajita_stock_updated', handleStockSync);
+    };
   }, []);
 
   const showToast = (msg) => {
@@ -225,6 +266,98 @@ export default function AdminDashboard({ user, setCurrentView, onLogout }) {
   };
 
   // --- CRUD: PRODUCTS ---
+  const availableColorPresets = [
+    { id: 'coral', name: 'Rosa Coral', hex: '#f07c82' },
+    { id: 'black', name: 'Negro', hex: '#111827' },
+    { id: 'white', name: 'Blanco', hex: '#ffffff' },
+    { id: 'gold', name: 'Dorado', hex: '#eab308' },
+    { id: 'blue', name: 'Azul', hex: '#38bdf8' },
+    { id: 'red', name: 'Rojo', hex: '#ef4444' },
+    { id: 'kraft', name: 'Kraft', hex: '#c29b68' },
+    { id: 'purple', name: 'Morado', hex: '#8b5cf6' },
+  ];
+
+  const availableSizePresets = [
+    { id: 'P', label: 'P', desc: 'Pequeña (15x15x8 cm)' },
+    { id: 'M', label: 'M', desc: 'Mediana (20x20x10 cm)' },
+    { id: 'G', label: 'G', desc: 'Grande (25,5x19x9 cm)' },
+    { id: 'EG', label: 'EG', desc: 'Extra Grande (30x30x12 cm)' },
+  ];
+
+  const handleImageFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Por favor selecciona un archivo de imagen válido (PNG, JPG, WEBP, etc.)');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('La imagen no debe superar los 5MB para un óptimo rendimiento');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64Data = event.target.result;
+      setImagePreview(base64Data);
+      setProductForm((prev) => ({ ...prev, image: base64Data }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSecondaryImagesChange = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    files.forEach((file) => {
+      if (!file.type.startsWith('image/')) return;
+      if (file.size > 5 * 1024 * 1024) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const base64 = ev.target.result;
+        setGalleryPreviews((prev) => [...prev, base64].slice(0, 4));
+        setProductForm((prev) => ({
+          ...prev,
+          gallery: [...(prev.gallery || []), base64].slice(0, 4),
+        }));
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleRemoveSecondaryImage = (idxToRemove) => {
+    setGalleryPreviews((prev) => prev.filter((_, i) => i !== idxToRemove));
+    setProductForm((prev) => ({
+      ...prev,
+      gallery: (prev.gallery || []).filter((_, i) => i !== idxToRemove),
+    }));
+  };
+
+  const handleRemoveImage = () => {
+    setImagePreview('');
+    setProductForm((prev) => ({ ...prev, image: '' }));
+  };
+
+  const toggleColorOption = (colorId) => {
+    setProductForm((prev) => {
+      const current = prev.colors || ['coral', 'black', 'white'];
+      const exists = current.includes(colorId);
+      const updated = exists ? current.filter((c) => c !== colorId) : [...current, colorId];
+      return { ...prev, colors: updated.length > 0 ? updated : [colorId] };
+    });
+  };
+
+  const toggleSizeOption = (sizeId) => {
+    setProductForm((prev) => {
+      const current = prev.sizes || ['P', 'M', 'G', 'EG'];
+      const exists = current.includes(sizeId);
+      const updated = exists ? current.filter((s) => s !== sizeId) : [...current, sizeId];
+      return { ...prev, sizes: updated.length > 0 ? updated : [sizeId] };
+    });
+  };
+
   const handleSaveProduct = async (e) => {
     e.preventDefault();
     if (!productForm.name || !productForm.price) {
@@ -234,18 +367,42 @@ export default function AdminDashboard({ user, setCurrentView, onLogout }) {
 
     const priceNum = parseFloat(productForm.price);
     const stockNum = parseInt(productForm.stock) || 0;
+    const minStockNum = parseInt(productForm.minStock) || 20;
+
+    const categoryNamesMap = {
+      especial: 'Empaques de Lujo',
+      microcorrugados: 'Microcorrugados',
+      unicolor: 'Unicolor',
+      portavasos: 'Portavasos',
+    };
+
+    const finalCategoryName = categoryNamesMap[productForm.category] || 'Empaques de Lujo';
+    const finalImage = productForm.image || editingProduct?.image || productsList[0]?.image || '';
+    const finalGallery = productForm.gallery?.length ? productForm.gallery : (galleryPreviews.length ? galleryPreviews : (editingProduct?.gallery || []));
+    const finalColors = productForm.colors?.length ? productForm.colors : ['coral', 'black', 'white'];
+    const finalSizes = productForm.sizes?.length ? productForm.sizes : ['P', 'M', 'G', 'EG'];
 
     let updatedList;
     if (editingProduct) {
       const updated = {
         ...editingProduct,
-        name: productForm.name,
+        name: productForm.name.trim(),
         price: priceNum,
         category: productForm.category,
+        categoryName: finalCategoryName,
+        type: productForm.type || 'cajas',
         stock: stockNum,
-        description: productForm.description,
+        minStock: minStockNum,
+        description: productForm.description.trim(),
         ref: productForm.ref || editingProduct.ref || `TC-${editingProduct.id}`,
         medidas: productForm.medidas || '20x20x10 cm',
+        image: finalImage,
+        gallery: finalGallery,
+        colors: finalColors,
+        sizes: finalSizes,
+        featured: Boolean(productForm.featured),
+        forYou: Boolean(productForm.forYou),
+        estatus: 'Activo',
       };
       await saveProduct(updated);
       updatedList = productsList.map((p) => (p.id === editingProduct.id ? updated : p));
@@ -253,30 +410,30 @@ export default function AdminDashboard({ user, setCurrentView, onLogout }) {
       setStockList((prev) =>
         prev.map((s) =>
           s.product === editingProduct.name
-            ? { ...s, product: productForm.name, quantity: stockNum, price: priceNum }
+            ? { ...s, product: productForm.name, quantity: stockNum, price: priceNum, sku: updated.ref, minStock: minStockNum }
             : s
         )
       );
-      showToast(`Producto "${productForm.name}" actualizado`);
+      showToast(`Producto "${productForm.name}" actualizado y sincronizado`);
     } else {
       const newProd = {
         id: Date.now(),
         ref: productForm.ref || `TC-${Date.now().toString().slice(-4)}`,
-        name: productForm.name,
+        name: productForm.name.trim(),
         price: priceNum,
         category: productForm.category,
-        categoryName:
-          productForm.category === 'microcorrugados'
-            ? 'Microcorrugados'
-            : productForm.category === 'portavasos'
-            ? 'Portavasos'
-            : 'Empaques de lujo',
+        categoryName: finalCategoryName,
+        type: productForm.type || 'cajas',
         stock: stockNum,
+        minStock: minStockNum,
         medidas: productForm.medidas || '20x20x10 cm',
-        description: productForm.description,
-        image: productsList[0]?.image || '',
-        featured: true,
-        forYou: true,
+        description: productForm.description.trim(),
+        image: finalImage,
+        gallery: finalGallery,
+        colors: finalColors,
+        sizes: finalSizes,
+        featured: Boolean(productForm.featured),
+        forYou: Boolean(productForm.forYou),
         estatus: 'Activo',
       };
       await saveProduct(newProd);
@@ -286,7 +443,7 @@ export default function AdminDashboard({ user, setCurrentView, onLogout }) {
           sku: newProd.ref,
           product: newProd.name,
           quantity: stockNum,
-          minStock: 20,
+          minStock: minStockNum,
           alertType: 'normal',
           category: newProd.categoryName,
           price: priceNum,
@@ -295,12 +452,14 @@ export default function AdminDashboard({ user, setCurrentView, onLogout }) {
         },
         ...prev,
       ]);
-      showToast(`Producto "${newProd.name}" publicado con éxito`);
+      showToast(`Producto "${newProd.name}" publicado y sincronizado en vivo`);
     }
 
     setProductsList(updatedList);
     setIsProductModalOpen(false);
     setEditingProduct(null);
+    setImagePreview('');
+    setGalleryPreviews([]);
   };
 
   const handleDeleteProduct = async (prodId, prodName) => {
@@ -314,28 +473,49 @@ export default function AdminDashboard({ user, setCurrentView, onLogout }) {
 
   const openEditProduct = (prod) => {
     setEditingProduct(prod);
+    setImagePreview(prod.image || '');
+    const currentGallery = Array.isArray(prod.gallery) ? prod.gallery : (Array.isArray(prod.images) ? prod.images : []);
+    setGalleryPreviews(currentGallery);
     setProductForm({
-      name: prod.name,
-      price: prod.price,
+      name: prod.name || '',
+      price: prod.price || '',
       category: prod.category || 'especial',
-      stock: prod.stock || 50,
+      type: prod.type || 'cajas',
+      stock: prod.stock ?? 50,
+      minStock: prod.minStock ?? 20,
       description: prod.description || '',
       ref: prod.ref || `TC-${prod.id}`,
       medidas: prod.medidas || '20x20x10 cm',
+      image: prod.image || '',
+      gallery: currentGallery,
+      colors: prod.colors?.map((c) => (typeof c === 'string' ? c : c.id)) || ['coral', 'black', 'white'],
+      sizes: prod.sizes?.map((s) => (typeof s === 'string' ? s : s.id)) || ['P', 'M', 'G', 'EG'],
+      featured: prod.featured !== false,
+      forYou: prod.forYou !== false,
     });
     setIsProductModalOpen(true);
   };
 
   const openNewProduct = () => {
     setEditingProduct(null);
+    setImagePreview('');
+    setGalleryPreviews([]);
     setProductForm({
       name: '',
       price: '',
       category: 'especial',
+      type: 'cajas',
       stock: 50,
+      minStock: 20,
       description: '',
       ref: `TC-${Math.floor(100 + Math.random() * 900)}`,
       medidas: '20x20x10 cm',
+      image: '',
+      gallery: [],
+      colors: ['coral', 'black', 'white'],
+      sizes: ['P', 'M', 'G', 'EG'],
+      featured: true,
+      forYou: true,
     });
     setIsProductModalOpen(true);
   };
@@ -1324,7 +1504,7 @@ export default function AdminDashboard({ user, setCurrentView, onLogout }) {
                       <button
                         onClick={() => {
                           const msg = encodeURIComponent(`Hola ${ord.client}, te escribimos de Tu Cajita sobre tu pedido #${ord.id}.`);
-                          window.open(`https://wa.me/${ord.phone?.replace(/[^0-9]/g, '') || '584247465717'}?text=${msg}`, '_blank');
+                          window.open(`https://wa.me/${ord.phone?.replace(/[^0-9]/g, '') || '584120177993'}?text=${msg}`, '_blank');
                         }}
                         className="py-2 bg-green-500 hover:bg-green-600 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1"
                       >
@@ -1629,7 +1809,7 @@ export default function AdminDashboard({ user, setCurrentView, onLogout }) {
                       type="text"
                       value={landingConfig.whatsappNumber}
                       onChange={(e) => setLandingConfig({ ...landingConfig, whatsappNumber: e.target.value })}
-                      placeholder="584247465717"
+                      placeholder="584120177993"
                       className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold outline-none focus:border-[#00cbf4]"
                     />
                   </div>
@@ -1708,11 +1888,11 @@ export default function AdminDashboard({ user, setCurrentView, onLogout }) {
                   <table className="w-full text-left text-xs">
                     <thead>
                       <tr className="border-b border-gray-200 text-gray-800 font-extrabold bg-gray-50/80">
-                        <th className="py-3 px-4">Vista</th>
+                        <th className="py-3 px-4">Foto</th>
                         <th className="py-3 px-4">REF / SKU</th>
                         <th className="py-3 px-4">Producto & Descripción</th>
-                        <th className="py-3 px-4">Categoría</th>
-                        <th className="py-3 px-4">Medidas</th>
+                        <th className="py-3 px-4">Tipo & Categoría</th>
+                        <th className="py-3 px-4">Ubicación Catálogo</th>
                         <th className="py-3 px-4">Stock</th>
                         <th className="py-3 px-4">Precio ($)</th>
                         <th className="py-3 px-4 text-center">Acciones</th>
@@ -1722,27 +1902,58 @@ export default function AdminDashboard({ user, setCurrentView, onLogout }) {
                       {filteredProducts.map((prod) => (
                         <tr key={prod.id} className="hover:bg-cyan-50/30 transition-colors">
                           <td className="py-3 px-4">
-                            <div className="w-12 h-12 rounded-xl bg-gray-100 overflow-hidden border border-gray-200 flex items-center justify-center">
+                            <div className="w-14 h-14 rounded-xl bg-gray-100 overflow-hidden border border-gray-200 flex items-center justify-center relative shadow-sm">
                               {prod.image ? (
                                 <img src={prod.image} alt={prod.name} className="w-full h-full object-cover" />
                               ) : (
-                                <span className="text-xl">📦</span>
+                                <span className="text-2xl">📦</span>
+                              )}
+                              {prod.image?.startsWith('data:image') && (
+                                <span className="absolute bottom-0 right-0 bg-blue-600 text-white text-[8px] font-black px-1 rounded-tl" title="Subida desde PC">
+                                  PC
+                                </span>
                               )}
                             </div>
                           </td>
                           <td className="py-3 px-4 font-mono font-bold text-gray-800">{prod.ref || `TC-${prod.id}`}</td>
                           <td className="py-3 px-4">
                             <p className="font-bold text-gray-900 text-sm">{prod.name}</p>
-                            <p className="text-[11px] text-gray-500 line-clamp-1">{prod.description}</p>
+                            <p className="text-[11px] text-gray-500 line-clamp-1">{prod.description || 'Sin descripción'}</p>
+                            <span className="text-[10px] text-gray-400 font-semibold">{prod.medidas || '20x20x10 cm'}</span>
                           </td>
                           <td className="py-3 px-4">
-                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-cyan-50 text-cyan-900 border border-cyan-200">
-                              {prod.categoryName || prod.category}
+                            <div className="flex flex-col gap-1">
+                              <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-50 text-cyan-900 border border-cyan-200 w-fit">
+                                {prod.type === 'arreglos' ? '💐 Arreglos' : prod.type === 'eventos' ? '🎉 Eventos' : '📦 Cajas'}
+                              </span>
+                              <span className="text-[10px] text-gray-500 font-medium">
+                                {prod.categoryName || prod.category}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex flex-wrap gap-1">
+                              {prod.featured && (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-200">
+                                  🌟 Destacado
+                                </span>
+                              )}
+                              {prod.forYou && (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-900 border border-purple-200">
+                                  ✨ Para ti
+                                </span>
+                              )}
+                              {!prod.featured && !prod.forYou && (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-600">
+                                  Solo Catálogo
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className={`font-extrabold ${prod.stock <= 10 ? 'text-red-600' : 'text-gray-900'}`}>
+                              {prod.stock} un.
                             </span>
-                          </td>
-                          <td className="py-3 px-4 text-gray-600 font-semibold">{prod.medidas || '20x20x10 cm'}</td>
-                          <td className="py-3 px-4">
-                            <span className="font-extrabold text-gray-900">{prod.stock} un.</span>
                           </td>
                           <td className="py-3 px-4 font-black text-teal-700 text-sm">
                             ${Number(prod.price).toFixed(2)}
@@ -1752,7 +1963,7 @@ export default function AdminDashboard({ user, setCurrentView, onLogout }) {
                               <button
                                 onClick={() => openEditProduct(prod)}
                                 className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 rounded-lg font-bold text-xs cursor-pointer"
-                                title="Editar producto y precio"
+                                title="Editar producto, foto y precio"
                               >
                                 ✏️ Editar
                               </button>
@@ -2055,114 +2266,321 @@ export default function AdminDashboard({ user, setCurrentView, onLogout }) {
           MODALS SECTION: PRODUCT, ORDER, INVOICE, CLIENT DETAIL
          ========================================================= */}
 
-      {/* MODAL 1: PRODUCT ADD / EDIT */}
+      {/* MODAL 1: PRODUCT ADD / EDIT (DISEÑO MODERNO CON MULTI-FOTOS Y VARIANTES) */}
       {isProductModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto animate-[fadeIn_0.2s_ease]">
-            <button
-              onClick={() => setIsProductModalOpen(false)}
-              className="absolute top-5 right-5 text-gray-400 hover:text-gray-700 text-xl font-bold cursor-pointer"
-            >
-              ✕
-            </button>
-            <h3 className="text-2xl font-black text-gray-900 mb-1">
-              {editingProduct ? 'Editar Producto / Precio' : 'Publicar Nuevo Producto'}
-            </h3>
-            <p className="text-xs text-gray-500 mb-5 font-semibold">
-              Los cambios se sincronizan en vivo con la tienda web y Supabase.
-            </p>
-
-            <form onSubmit={handleSaveProduct} className="space-y-4 text-xs font-bold text-gray-700">
-              <div>
-                <label className="block mb-1 text-gray-800">Nombre del Producto *</label>
-                <input
-                  type="text"
-                  required
-                  value={productForm.name}
-                  onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
-                  placeholder="Ej: Caja Happy Day Corazón"
-                  className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-sm font-semibold outline-none focus:border-[#00cbf4]"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block mb-1 text-gray-800">Precio ($) *</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    required
-                    value={productForm.price}
-                    onChange={(e) => setProductForm({ ...productForm, price: e.target.value })}
-                    placeholder="89.99"
-                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-sm font-semibold outline-none focus:border-[#00cbf4]"
-                  />
-                </div>
-                <div>
-                  <label className="block mb-1 text-gray-800">Stock (Unidades) *</label>
-                  <input
-                    type="number"
-                    required
-                    value={productForm.stock}
-                    onChange={(e) => setProductForm({ ...productForm, stock: e.target.value })}
-                    placeholder="50"
-                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-sm font-semibold outline-none focus:border-[#00cbf4]"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block mb-1 text-gray-800">Categoría</label>
-                  <select
-                    value={productForm.category}
-                    onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
-                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-sm font-semibold outline-none focus:border-[#00cbf4]"
-                  >
-                    <option value="especial">Empaques de Lujo</option>
-                    <option value="microcorrugados">Microcorrugados</option>
-                    <option value="unicolor">Unicolor</option>
-                    <option value="portavasos">Portavasos</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block mb-1 text-gray-800">Medidas (cm)</label>
-                  <input
-                    type="text"
-                    value={productForm.medidas}
-                    onChange={(e) => setProductForm({ ...productForm, medidas: e.target.value })}
-                    placeholder="20x20x10 cm"
-                    className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-sm font-semibold outline-none focus:border-[#00cbf4]"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block mb-1 text-gray-800">Descripción</label>
-                <textarea
-                  rows="3"
-                  value={productForm.description}
-                  onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
-                  placeholder="Detalles sobre materiales, acabados y recomendaciones..."
-                  className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl text-sm font-medium outline-none focus:border-[#00cbf4]"
-                />
-              </div>
-
-              <div className="pt-3 flex gap-3">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl relative max-h-[92vh] overflow-y-auto animate-[fadeIn_0.2s_ease] border border-gray-100 flex flex-col my-auto">
+            
+            {/* Header estilo Barra Superior Cyan */}
+            <div className="bg-[#00c2ff] text-white px-5 py-4 flex items-center justify-between rounded-t-3xl sticky top-0 z-20 shadow-sm">
+              <div className="flex items-center gap-3">
                 <button
                   type="button"
                   onClick={() => setIsProductModalOpen(false)}
-                  className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-sm cursor-pointer"
+                  className="text-white hover:bg-white/20 p-1.5 rounded-full transition-colors font-black text-lg cursor-pointer"
+                  title="Volver"
                 >
-                  Cancelar
+                  ←
                 </button>
+                <h3 className="text-lg font-black tracking-tight" style={{ fontFamily: "'Fredoka One', cursive" }}>
+                  {editingProduct ? 'Editar Producto' : 'Productos'}
+                </h3>
+              </div>
+              <span className="text-xs bg-white/20 px-3 py-1 rounded-full font-bold">
+                {editingProduct ? 'Modo Edición' : 'Nuevo'}
+              </span>
+            </div>
+
+            <form onSubmit={handleSaveProduct} className="p-5 space-y-5 text-xs font-bold text-gray-700 flex-1">
+              
+              {/* ═══ 1. SECCIÓN SUPERIOR: VISOR DE FOTOS + GALERÍA MULTI-FOTOS ═══ */}
+              <div className="bg-[#f8fafc] rounded-3xl p-4 border border-gray-200/80 relative space-y-3">
+                <div className="flex items-center justify-between text-gray-500 text-[11px]">
+                  <span className="font-extrabold text-gray-700">📸 Fotos del Producto (Portada + Ángulos)</span>
+                  <span className="font-semibold text-gray-400">Hasta 5 fotos</span>
+                </div>
+
+                {/* Visor Principal / Portada */}
+                <div className="relative bg-white rounded-2xl h-52 sm:h-56 flex items-center justify-center border-2 border-dashed border-gray-300 overflow-hidden group">
+                  {imagePreview ? (
+                    <>
+                      <img src={imagePreview} alt="Portada" className="max-h-full max-w-full object-contain drop-shadow" />
+                      <div className="absolute top-2 right-2 flex gap-1.5 z-10">
+                        <label className="px-2.5 py-1 bg-white/90 hover:bg-white text-gray-800 text-[10px] font-black rounded-lg shadow cursor-pointer transition-all">
+                          🔄 Cambiar
+                          <input type="file" accept="image/*" onChange={handleImageFileChange} className="hidden" />
+                        </label>
+                        <button
+                          type="button"
+                          onClick={handleRemoveImage}
+                          className="px-2.5 py-1 bg-red-500 hover:bg-red-600 text-white text-[10px] font-black rounded-lg shadow cursor-pointer transition-all"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer hover:bg-cyan-50/50 transition-colors">
+                      <span className="text-4xl text-gray-300 mb-1 font-light group-hover:scale-110 transition-transform">+</span>
+                      <span className="text-xs font-black text-gray-700">Subir Foto Principal (Portada)</span>
+                      <span className="text-[10px] text-gray-400 font-normal mt-0.5">JPG, PNG, WEBP</span>
+                      <input type="file" accept="image/*" onChange={handleImageFileChange} className="hidden" />
+                    </label>
+                  )}
+                </div>
+
+                {/* Miniaturas de Fotos Secundarias (Ángulos / Variantes) */}
+                <div>
+                  <label className="block text-[11px] font-extrabold text-gray-700 mb-1.5">
+                    Fotos Secundarias (Miniaturas en la vista de producto)
+                  </label>
+                  <div className="flex items-center gap-2.5 overflow-x-auto pb-1">
+                    {galleryPreviews.map((img, idx) => (
+                      <div key={idx} className="relative w-16 h-16 rounded-xl bg-white border border-gray-300 p-1 flex-shrink-0 flex items-center justify-center group shadow-sm">
+                        <img src={img} alt={`Ángulo ${idx + 1}`} className="w-full h-full object-contain" />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveSecondaryImage(idx)}
+                          className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full text-[10px] flex items-center justify-center font-black shadow cursor-pointer hover:scale-110 transition-transform"
+                          title="Eliminar foto"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+
+                    {galleryPreviews.length < 4 && (
+                      <label className="w-16 h-16 rounded-xl border-2 border-dashed border-[#00c2ff]/60 hover:border-[#00c2ff] bg-cyan-50/50 hover:bg-cyan-50 text-[#00c2ff] flex flex-col items-center justify-center cursor-pointer transition-all flex-shrink-0" title="Agregar otra foto">
+                        <span className="text-xl font-bold">+</span>
+                        <span className="text-[9px] font-extrabold">Foto</span>
+                        <input type="file" accept="image/*" multiple onChange={handleSecondaryImagesChange} className="hidden" />
+                      </label>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* ═══ 2. SECCIÓN INFERIOR: TARJETA CYAN CON CAMPOS Y VARIANTES ═══ */}
+              <div className="bg-[#bbf2ff] rounded-3xl p-5 space-y-4 border border-[#8fe4fc] shadow-sm">
+                
+                {/* Nombre y Precio */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="flex-1 w-full">
+                    <label className="block text-[11px] font-black text-gray-800 uppercase tracking-wider mb-1">
+                      Nombre del Producto *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={productForm.name}
+                      onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
+                      placeholder="Ej: Caja Happy Day Sorpresa"
+                      className="w-full p-2.5 bg-white border border-gray-300 rounded-xl text-sm font-bold text-gray-900 outline-none focus:ring-2 focus:ring-[#00c2ff]"
+                    />
+                  </div>
+
+                  <div className="w-full sm:w-32">
+                    <label className="block text-[11px] font-black text-gray-800 uppercase tracking-wider mb-1">
+                      Precio ($) *
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      required
+                      value={productForm.price}
+                      onChange={(e) => setProductForm({ ...productForm, price: e.target.value })}
+                      placeholder="15.99"
+                      className="w-full p-2.5 bg-white border border-gray-300 rounded-xl text-sm font-black text-gray-900 outline-none focus:ring-2 focus:ring-[#00c2ff]"
+                    />
+                  </div>
+                </div>
+
+                <div className="text-[11px] text-gray-700 font-semibold italic -mt-1">
+                  Precio exclusivo para clientes en tienda
+                </div>
+
+                {/* Selector de Medidas Disponibles */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-black uppercase tracking-wider text-gray-800">
+                      Medidas Disponibles
+                    </label>
+                    <span className="text-[10px] text-gray-600 font-medium">Activa o desactiva las medidas</span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {availableSizePresets.map((sz) => {
+                      const isSelected = (productForm.sizes || []).includes(sz.id);
+                      return (
+                        <button
+                          key={sz.id}
+                          type="button"
+                          onClick={() => toggleSizeOption(sz.id)}
+                          className={`w-10 h-10 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center shadow-sm ${
+                            isSelected
+                              ? 'bg-[#ffcc00] text-gray-950 ring-2 ring-amber-400 scale-105 shadow-md'
+                              : 'bg-white/80 text-gray-500 border border-gray-300 hover:bg-white'
+                          }`}
+                          title={sz.desc}
+                        >
+                          {sz.label}
+                        </button>
+                      );
+                    })}
+                    <input
+                      type="text"
+                      value={productForm.medidas}
+                      onChange={(e) => setProductForm({ ...productForm, medidas: e.target.value })}
+                      placeholder="Detalle cm: 25,5x19x9 cm"
+                      className="flex-1 min-w-[150px] p-2 bg-white border border-gray-300 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-[#00c2ff]"
+                    />
+                  </div>
+                </div>
+
+                {/* Selector de Colores Disponibles */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-black uppercase tracking-wider text-gray-800">
+                      Colores Disponibles (del mismo tipo de caja)
+                    </label>
+                    <span className="text-[10px] text-gray-600 font-medium">Selecciona los colores activos</span>
+                  </div>
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    {availableColorPresets.map((col) => {
+                      const isSelected = (productForm.colors || []).includes(col.id);
+                      return (
+                        <button
+                          key={col.id}
+                          type="button"
+                          onClick={() => toggleColorOption(col.id)}
+                          className={`w-8 h-8 rounded-full border-2 transition-all cursor-pointer flex items-center justify-center shadow-sm ${
+                            isSelected
+                              ? 'ring-2 ring-gray-900 ring-offset-2 scale-110 border-white'
+                              : 'border-gray-300 opacity-60 hover:opacity-100'
+                          }`}
+                          style={{ backgroundColor: col.hex }}
+                          title={col.name}
+                        >
+                          {isSelected && (
+                            <span className={`text-[10px] font-bold ${col.id === 'white' ? 'text-gray-900' : 'text-white'}`}>
+                              ✓
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 4 Inputs Grid: ID, Categoría, Stock, Mínimo */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-800 uppercase mb-1">ID / Ref</label>
+                    <input
+                      type="text"
+                      value={productForm.ref}
+                      onChange={(e) => setProductForm({ ...productForm, ref: e.target.value })}
+                      placeholder="TC-101"
+                      className="w-full p-2 bg-white border border-gray-300 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-[#00c2ff]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-800 uppercase mb-1">Categoría</label>
+                    <select
+                      value={productForm.category}
+                      onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
+                      className="w-full p-2 bg-white border border-gray-300 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-[#00c2ff] cursor-pointer"
+                    >
+                      <option value="especial">Lujo</option>
+                      <option value="microcorrugados">Microcorrugados</option>
+                      <option value="unicolor">Unicolor</option>
+                      <option value="portavasos">Portavasos</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-800 uppercase mb-1">Stock</label>
+                    <input
+                      type="number"
+                      required
+                      value={productForm.stock}
+                      onChange={(e) => setProductForm({ ...productForm, stock: e.target.value })}
+                      placeholder="50"
+                      className="w-full p-2 bg-white border border-gray-300 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-[#00c2ff]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-800 uppercase mb-1">Mínimo</label>
+                    <input
+                      type="number"
+                      value={productForm.minStock}
+                      onChange={(e) => setProductForm({ ...productForm, minStock: e.target.value })}
+                      placeholder="20"
+                      className="w-full p-2 bg-white border border-gray-300 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-[#00c2ff]"
+                    />
+                  </div>
+                </div>
+
+                {/* Tipo de Producto y Secciones */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-800 uppercase mb-1">Tipo de Sección</label>
+                    <select
+                      value={productForm.type}
+                      onChange={(e) => setProductForm({ ...productForm, type: e.target.value })}
+                      className="w-full p-2 bg-white border border-gray-300 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-[#00c2ff] cursor-pointer"
+                    >
+                      <option value="cajas">📦 Cajas</option>
+                      <option value="arreglos">💐 Arreglos</option>
+                      <option value="eventos">🎉 Eventos</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-4 sm:pt-4">
+                    <label className="flex items-center gap-1.5 cursor-pointer bg-white px-3 py-1.5 rounded-xl border border-gray-300 flex-1">
+                      <input
+                        type="checkbox"
+                        checked={productForm.featured}
+                        onChange={(e) => setProductForm({ ...productForm, featured: e.target.checked })}
+                        className="rounded text-amber-500"
+                      />
+                      <span className="text-[11px] font-bold text-gray-800">🌟 Destacados</span>
+                    </label>
+
+                    <label className="flex items-center gap-1.5 cursor-pointer bg-white px-3 py-1.5 rounded-xl border border-gray-300 flex-1">
+                      <input
+                        type="checkbox"
+                        checked={productForm.forYou}
+                        onChange={(e) => setProductForm({ ...productForm, forYou: e.target.checked })}
+                        className="rounded text-purple-500"
+                      />
+                      <span className="text-[11px] font-bold text-gray-800">✨ Para ti</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Descripción */}
+                <div>
+                  <label className="block text-[11px] font-black text-gray-800 uppercase mb-1">Descripción</label>
+                  <textarea
+                    rows="2"
+                    value={productForm.description}
+                    onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
+                    placeholder="Ideal para maquillaje, desayunos sorpresa y regalos personalizados..."
+                    className="w-full p-2.5 bg-white border border-gray-300 rounded-xl text-xs font-medium outline-none focus:ring-2 focus:ring-[#00c2ff]"
+                  />
+                </div>
+
+                {/* Botón Principal Crear / Publicar */}
                 <button
                   type="submit"
-                  className="flex-1 py-3 bg-[#00cbf4] hover:bg-[#00b5dc] text-white font-bold rounded-xl text-sm shadow cursor-pointer"
+                  className="w-full py-4 bg-[#00c2ff] hover:bg-[#00b0e6] text-white font-black text-base rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer hover:scale-[1.01] active:scale-100"
                 >
-                  {editingProduct ? 'Actualizar Producto' : 'Guardar y Publicar'}
+                  {editingProduct ? 'Guardar Cambios' : 'Crear'}
                 </button>
               </div>
+
             </form>
           </div>
         </div>

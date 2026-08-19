@@ -43,7 +43,7 @@ const works = [
   },
 ];
 
-export default function OurWork() {
+export default function OurWork({ onExplore }) {
   const [visible, setVisible] = useState(false);
   const sectionRef = useRef(null);
 
@@ -60,7 +60,7 @@ export default function OurWork() {
 
   return (
     <section
-      id="productos"
+      id="portafolio"
       ref={sectionRef}
       className="py-16 md:py-24 bg-gradient-to-b from-white via-amber-50/30 to-white"
     >
@@ -84,6 +84,7 @@ export default function OurWork() {
           {works.map((work, index) => (
             <div
               key={work.title}
+              onClick={() => onExplore && onExplore()}
               className={`group relative overflow-hidden rounded-2xl cursor-pointer transition-all duration-700 ${
                 visible
                   ? 'opacity-100 translate-y-0'
@@ -130,15 +131,15 @@ export default function OurWork() {
 
         {/* CTA button */}
         <div className="text-center mt-16 md:mt-24 mb-4 md:mb-8">
-          <a
-            href="#contacto"
-            className="inline-flex items-center gap-3 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white font-bold text-lg px-10 py-4 rounded-full shadow-lg shadow-amber-200/50 hover:shadow-xl hover:shadow-amber-300/50 transition-all duration-300 hover:-translate-y-1"
+          <button
+            onClick={() => onExplore && onExplore()}
+            className="inline-flex items-center gap-3 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white font-bold text-lg px-10 py-4 rounded-full shadow-lg shadow-amber-200/50 hover:shadow-xl hover:shadow-amber-300/50 transition-all duration-300 hover:-translate-y-1 cursor-pointer"
           >
-            Ver más trabajos
+            Ver Catálogo de Productos
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
             </svg>
-          </a>
+          </button>
         </div>
       </div>
     </section>

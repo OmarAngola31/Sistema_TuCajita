@@ -53,7 +53,7 @@ export const defaultReviews = [
 export const defaultLandingConfig = {
   heroTitle: 'Tu Cajita: Empaques y Diseños que Enamoran',
   heroSubtitle: 'Diseñamos y fabricamos cajas personalizadas, empaques de lujo y arreglos creativos para cada ocasión especial.',
-  whatsappNumber: '584247465717',
+  whatsappNumber: '584120177993',
   announcementText: '✨ ¡Envíos a toda Venezuela! Descuentos especiales para pedidos corporativos y eventos.',
   showAnnouncement: true,
   featuredCategories: ['especial', 'microcorrugados', 'unicolor', 'portavasos'],
@@ -63,70 +63,262 @@ export const defaultLandingConfig = {
 
 // AUTH & PROFILES
 export async function syncUserProfile(user, additionalData = {}) {
-  if (!supabase || !user) return null;
+  if (!user && !additionalData.email && !additionalData.correo) return null;
+  
+  const userId = user?.id || additionalData.id || `usr_${Date.now()}`;
+  const userEmail = user?.email || additionalData.correo || additionalData.email || '';
+  const userRole = additionalData.rol || additionalData.role || (userEmail.toLowerCase().includes('admin') ? 'Administrador' : 'Cliente');
+  const normalizedRole = (userRole.toLowerCase() === 'admin' || userRole.toLowerCase() === 'administrador') ? 'Administrador' : 'Cliente';
+
+  const profile = {
+    id: userId,
+    nombre: additionalData.nombre || additionalData.name || user?.user_metadata?.full_name || userEmail.split('@')[0] || 'Cliente',
+    correo: userEmail,
+    rol: normalizedRole,
+    telefono: additionalData.telefono || additionalData.phone || user?.user_metadata?.phone || '',
+    direccion: additionalData.direccion || additionalData.address || user?.user_metadata?.address || '',
+    cedula: additionalData.cedula || user?.user_metadata?.cedula || '',
+  };
+
+  // Cache in localStorage
   try {
-    const profile = {
-      id: user.id,
-      nombre: user.user_metadata?.full_name || additionalData.name || 'Usuario',
-      correo: user.email,
-      rol: additionalData.role || (user.email === 'admin@tucajita.com' ? 'Administrador' : 'Cliente'),
-      telefono: additionalData.phone || '',
-      direccion: additionalData.address || '',
+    const clients = JSON.parse(localStorage.getItem('tucajita_clients') || '[]');
+    const existingIdx = clients.findIndex((c) => (c.correo && c.correo === profile.correo) || (c.id && c.id === profile.id));
+    if (existingIdx > -1) {
+      clients[existingIdx] = { ...clients[existingIdx], ...profile };
+    } else {
+      clients.push(profile);
+    }
+    localStorage.setItem('tucajita_clients', JSON.stringify(clients));
+  } catch (e) {
+    console.warn('Error caching client:', e);
+  }
+
+  if (!supabase) return profile;
+
+  try {
+    // 1. Guardar en tabla public.usuario
+    const usuarioPayload = {
+      id: profile.id,
+      nombre: profile.nombre,
+      direccion: profile.direccion,
+      telefono: profile.telefono,
+      correo: profile.correo,
+      cedula: profile.cedula,
+      rol: profile.rol,
     };
 
-    let { data, error } = await supabase.from('usuario').upsert(profile, { onConflict: 'id' }).select().single();
-    if (error) {
+    const { data, error: userError } = await supabase
+      .from('usuario')
+      .upsert(usuarioPayload, { onConflict: 'id' })
+      .select()
+      .single();
+
+    // 2. Si es cliente, registrar en tabla public.cliente
+    let clientError = null;
+    if (profile.rol === 'Cliente') {
+      const { error } = await supabase
+        .from('cliente')
+        .upsert({
+          usuario_id: profile.id,
+          fecha_registro: new Date().toISOString().split('T')[0],
+        }, { onConflict: 'usuario_id' });
+      clientError = error;
+    }
+
+    // 3. Fallback a tabla public.profiles si la tabla usuario tiene restricciones RLS o error de esquema
+    if (userError || clientError) {
+      console.warn('Fallback sync to profiles due to:', userError || clientError);
       await supabase.from('profiles').upsert({
-        id: user.id,
-        email: user.email,
+        id: profile.id,
+        email: profile.correo,
         full_name: profile.nombre,
+        phone: profile.telefono,
+        address: profile.direccion,
+        cedula: profile.cedula,
         role: profile.rol.toLowerCase(),
       }, { onConflict: 'id' });
     }
+
     return data || profile;
   } catch (err) {
     console.warn('Error syncUserProfile:', err);
-    return null;
+    // Intento de fallback secundario a profiles
+    try {
+      await supabase?.from('profiles').upsert({
+        id: profile.id,
+        email: profile.correo,
+        full_name: profile.nombre,
+        role: profile.rol.toLowerCase(),
+      }, { onConflict: 'id' });
+    } catch {
+      // Silently continue
+    }
+    return profile;
+  }
+}
+
+// OBTENER CLIENTES REGISTRADOS
+export async function getClients() {
+  let localClients = [];
+  try {
+    const saved = localStorage.getItem('tucajita_clients');
+    if (saved) localClients = JSON.parse(saved);
+  } catch (e) {
+    console.warn('Error reading local clients:', e);
+  }
+
+  if (!supabase) return localClients;
+
+  try {
+    // 1. Intentar desde public.usuario
+    const { data: usuarios, error } = await supabase
+      .from('usuario')
+      .select('*')
+      .eq('rol', 'Cliente')
+      .order('created_at', { ascending: false });
+
+    if (!error && usuarios && usuarios.length > 0) {
+      localStorage.setItem('tucajita_clients', JSON.stringify(usuarios));
+      return usuarios;
+    }
+
+    // 2. Fallback a tabla profiles
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('role', 'cliente');
+
+    if (profiles && profiles.length > 0) {
+      const mapped = profiles.map((p) => ({
+        id: p.id,
+        nombre: p.full_name || p.nombre || 'Cliente',
+        correo: p.email || p.correo || '',
+        telefono: p.phone || p.telefono || '',
+        direccion: p.address || p.direccion || '',
+        cedula: p.cedula || '',
+        rol: 'Cliente',
+      }));
+      return mapped;
+    }
+
+    return localClients;
+  } catch (err) {
+    console.warn('Error getClients:', err);
+    return localClients;
   }
 }
 
 // PRODUCTS CRUD
 export async function getProducts() {
-  if (!supabase) return defaultProducts;
+  // Load from local storage cache if available
+  let localProducts = [];
+  try {
+    const saved = localStorage.getItem('tucajita_products');
+    if (saved) {
+      localProducts = JSON.parse(saved);
+    }
+  } catch (e) {
+    console.warn('Error reading local products:', e);
+  }
+
+  // Si no hay productos en local, inicializar con defaultProducts
+  if (!localProducts || localProducts.length === 0) {
+    localProducts = [...defaultProducts];
+    try {
+      localStorage.setItem('tucajita_products', JSON.stringify(localProducts));
+    } catch {
+      // ignore
+    }
+  }
+
+  if (!supabase) {
+    return localProducts;
+  }
+
   try {
     let { data, error } = await supabase.from('producto').select('*, categoria(nombre)').order('id', { ascending: true });
     if (error || !data || data.length === 0) {
       const res = await supabase.from('products').select('*').order('id', { ascending: true });
-      data = res.data;
+      if (res.data && res.data.length > 0) {
+        data = res.data;
+      }
     }
-    if (!data || data.length === 0) return defaultProducts;
 
-    return data.map((p) => ({
-      id: p.id,
-      name: p.nombre || p.name || `Producto #${p.id}`,
-      price: Number(p.precio_unitario || p.price || 0),
-      category: p.categoria?.nombre || p.category || 'especial',
-      categoryName: p.categoria?.nombre || p.category_name || 'Empaques de lujo',
-      stock: p.stock_actual ?? p.stock ?? 50,
-      description: p.descripcion || p.description || '',
-      image: p.image || defaultProducts[0]?.image,
-      featured: p.featured ?? true,
-      forYou: p.for_you ?? true,
-      ref: p.ref || `TC-00${p.id}`,
-      medidas: p.medidas || '20x20x10 cm',
-      estatus: p.estatus || 'Activo'
-    }));
-  } catch {
-    return defaultProducts;
+    if (!data || data.length === 0) {
+      return localProducts;
+    }
+
+    // 1. Mapear los productos que vienen de Supabase enriqueciéndolos con los datos locales
+    const supabaseMapped = data.map((p, idx) => {
+      const cached = localProducts.find((c) => c.id === p.id || c.ref === p.ref);
+      return {
+        id: p.id,
+        name: p.nombre || p.name || cached?.name || `Producto #${p.id}`,
+        price: Number(p.precio_unitario || p.price || cached?.price || 0),
+        category: p.categoria?.nombre || p.category || cached?.category || 'especial',
+        categoryName: p.categoria?.nombre || p.category_name || cached?.categoryName || 'Empaques de Lujo',
+        stock: p.stock_actual ?? p.stock ?? cached?.stock ?? 50,
+        description: p.descripcion || p.description || cached?.description || '',
+        image: cached?.image || p.image || p.imagen_url || defaultProducts[idx % defaultProducts.length]?.image || defaultProducts[0]?.image,
+        featured: cached?.featured !== undefined ? Boolean(cached.featured) : (p.featured ?? true),
+        forYou: cached?.forYou !== undefined ? Boolean(cached.forYou) : (p.for_you ?? true),
+        type: cached?.type || p.type || 'cajas',
+        ref: p.ref || cached?.ref || `TC-${p.id}`,
+        medidas: p.medidas || cached?.medidas || '20x20x10 cm',
+        estatus: p.estatus || cached?.estatus || 'Activo',
+      };
+    });
+
+    // 2. IMPORTANTE: Preservar todos los productos creados localmente que no están en Supabase
+    const customLocalProducts = localProducts.filter(
+      (lp) => !supabaseMapped.some((sp) => sp.id === lp.id || (lp.ref && sp.ref === lp.ref))
+    );
+
+    // Combinar la lista completa: productos locales personalizados primero, luego los de supabase
+    const combined = [...customLocalProducts, ...supabaseMapped];
+
+    // Cachear la lista fusionada completa en localStorage
+    try {
+      localStorage.setItem('tucajita_products', JSON.stringify(combined));
+    } catch {
+      // ignore
+    }
+
+    return combined;
+  } catch (err) {
+    console.warn('Error fetching products from Supabase, using local fallback:', err);
+    return localProducts;
   }
 }
 
 export async function saveProduct(product) {
+  // Save to localStorage
+  let updated = [];
+  try {
+    const prods = await getProducts();
+    const existingIndex = prods.findIndex((p) => p.id === product.id);
+    if (existingIndex > -1) {
+      updated = [...prods];
+      updated[existingIndex] = { ...updated[existingIndex], ...product };
+    } else {
+      updated = [product, ...prods];
+    }
+    localStorage.setItem('tucajita_products', JSON.stringify(updated));
+
+    // Broadcast live event for real-time reactivity in all open views
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('tucajita_products_updated', { detail: updated }));
+    }
+  } catch (e) {
+    console.warn('Error saving local product:', e);
+  }
+
   if (!supabase) return product;
   try {
     const payload = {
-      id: product.id,
-      ref: product.ref || `TC-00${product.id}`,
+      id: typeof product.id === 'number' ? product.id : Date.now(),
+      ref: product.ref || `TC-${product.id}`,
       nombre: product.name,
       precio_unitario: product.price,
       descripcion: product.description,
@@ -134,16 +326,38 @@ export async function saveProduct(product) {
       medidas: product.medidas || '20x20x10 cm',
       estatus: product.estatus || 'Activo',
     };
-    const { data } = await supabase.from('producto').upsert(payload).select().single();
-    return data || product;
-  } catch {
+    const { data } = await supabase.from('producto').upsert(payload, { onConflict: 'id' }).select().single();
+    
+    // Sincronizar también con inventario
+    await supabase.from('inventario').upsert({
+      producto_id: payload.id,
+      stock_minimo: 10,
+    }, { onConflict: 'producto_id' });
+
+    return { ...product, ...data };
+  } catch (err) {
+    console.warn('Error saving to Supabase:', err);
     return product;
   }
 }
 
 export async function deleteProduct(productId) {
+  try {
+    const prods = await getProducts();
+    const filtered = prods.filter((p) => p.id !== productId);
+    localStorage.setItem('tucajita_products', JSON.stringify(filtered));
+
+    // Broadcast live event
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('tucajita_products_updated', { detail: filtered }));
+    }
+  } catch (e) {
+    console.warn('Error deleting local product:', e);
+  }
+
   if (!supabase) return true;
   try {
+    await supabase.from('inventario').delete().eq('producto_id', productId);
     await supabase.from('producto').delete().eq('id', productId);
     await supabase.from('products').delete().eq('id', productId);
     return true;
@@ -154,16 +368,26 @@ export async function deleteProduct(productId) {
 
 // ORDERS CRUD
 export async function getOrders() {
-  if (!supabase) return defaultOrders;
+  let localOrders = null;
+  try {
+    const saved = localStorage.getItem('tucajita_orders');
+    if (saved) {
+      localOrders = JSON.parse(saved);
+    }
+  } catch (e) {
+    console.warn('Error reading local orders:', e);
+  }
+
+  if (!supabase) return localOrders || defaultOrders;
   try {
     let { data, error } = await supabase.from('solicitud').select('*, usuario(nombre, correo, telefono, direccion)').order('id', { ascending: false });
     if (error || !data || data.length === 0) {
       const res = await supabase.from('orders').select('*').order('id', { ascending: false });
       data = res.data;
     }
-    if (!data || data.length === 0) return defaultOrders;
+    if (!data || data.length === 0) return localOrders || defaultOrders;
 
-    return data.map((s) => ({
+    const mapped = data.map((s) => ({
       id: String(s.id),
       client: s.usuario?.nombre || s.client || 'Cliente Tu Cajita',
       email: s.usuario?.correo || s.email || 'cliente@tucajita.com',
@@ -176,12 +400,112 @@ export async function getOrders() {
       paymentMethod: s.metodo_pago || s.paymentMethod || 'Pago Móvil',
       itemsList: s.itemsList || [{ name: 'Empaque Tu Cajita', qty: 1, price: Number(s.total || 0) }]
     }));
+
+    localStorage.setItem('tucajita_orders', JSON.stringify(mapped));
+    return mapped;
   } catch {
-    return defaultOrders;
+    return localOrders || defaultOrders;
   }
 }
 
 export async function saveOrder(order) {
+  try {
+    const ords = await getOrders();
+    const existingIdx = ords.findIndex((o) => o.id === order.id);
+    let updatedOrders;
+    if (existingIdx > -1) {
+      updatedOrders = [...ords];
+      updatedOrders[existingIdx] = { ...updatedOrders[existingIdx], ...order };
+    } else {
+      updatedOrders = [order, ...ords];
+    }
+    localStorage.setItem('tucajita_orders', JSON.stringify(updatedOrders));
+
+    // 1. Crear / sincronizar Factura Digital en tiempo real
+    const invId = order.invoiceNumber ? `FAC-${order.invoiceNumber}` : `FAC-${order.id}`;
+    const newInvoice = {
+      id: invId,
+      orderId: String(order.id),
+      client: order.client || 'Cliente Tu Cajita',
+      idDoc: order.idDoc || 'V-12.345.678',
+      date: order.date || new Date().toISOString().split('T')[0],
+      subtotal: Number(order.total || 0),
+      tax: 0,
+      total: Number(order.total || 0),
+      status: 'Emitida',
+      paymentMethod: order.paymentMethod || 'Pago Móvil',
+      reference: order.ref || `#${order.id}`,
+      itemsList: order.itemsList || [],
+      deliveryAddress: order.deliveryAddress,
+      deliveryType: order.deliveryType,
+    };
+
+    const currentInvoices = await getInvoices();
+    const invIdx = currentInvoices.findIndex((i) => i.id === newInvoice.id || i.orderId === newInvoice.orderId);
+    let updatedInvoices;
+    if (invIdx > -1) {
+      updatedInvoices = [...currentInvoices];
+      updatedInvoices[invIdx] = { ...updatedInvoices[invIdx], ...newInvoice };
+    } else {
+      updatedInvoices = [newInvoice, ...currentInvoices];
+    }
+    localStorage.setItem('tucajita_invoices', JSON.stringify(updatedInvoices));
+
+    // 2. Crear / sincronizar Transacción de Pago en tiempo real
+    const newTransaction = {
+      id: `TRX-${order.id}`,
+      date: order.date || new Date().toISOString().split('T')[0],
+      client: order.client || 'Cliente Tu Cajita',
+      reference: order.ref || `#${order.id}`,
+      invoiceId: invId,
+      status: 'Conciliado',
+      amount: Number(order.total || 0),
+      method: order.paymentMethod || 'Zelle',
+      bank: order.paymentMethod === 'Bolívares por pago móvil' ? 'Banesco' : order.paymentMethod,
+      notes: `Pago verificado para pedido #${order.id}`,
+    };
+
+    const currentTransactions = await getTransactions();
+    const trxIdx = currentTransactions.findIndex((t) => t.id === newTransaction.id || t.invoiceId === newTransaction.invoiceId);
+    let updatedTransactions;
+    if (trxIdx > -1) {
+      updatedTransactions = [...currentTransactions];
+      updatedTransactions[trxIdx] = { ...updatedTransactions[trxIdx], ...newTransaction };
+    } else {
+      updatedTransactions = [newTransaction, ...currentTransactions];
+    }
+    localStorage.setItem('tucajita_transactions', JSON.stringify(updatedTransactions));
+
+    // 3. Descontar Stock / Inventario automáticamente si hay items
+    if (Array.isArray(order.itemsList) && order.itemsList.length > 0) {
+      const currentStock = await getStockData();
+      const updatedStock = currentStock.map((s) => {
+        const matchingItem = order.itemsList.find((i) => i.name && (s.product.toLowerCase().includes(i.name.toLowerCase()) || i.name.toLowerCase().includes(s.product.toLowerCase())));
+        if (matchingItem) {
+          const qty = matchingItem.quantity || matchingItem.qty || 1;
+          const newQty = Math.max(0, s.quantity - qty);
+          const alertType = newQty <= s.minStock ? 'danger' : newQty <= s.minStock + 10 ? 'warning' : 'normal';
+          return { ...s, quantity: newQty, alertType };
+        }
+        return s;
+      });
+      localStorage.setItem('tucajita_stock', JSON.stringify(updatedStock));
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('tucajita_stock_updated', { detail: updatedStock }));
+      }
+    }
+
+    // 4. Emitir eventos en vivo para que el Admin Dashboard y la tienda se actualicen al instante
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('tucajita_orders_updated', { detail: updatedOrders }));
+      window.dispatchEvent(new CustomEvent('tucajita_invoices_updated', { detail: updatedInvoices }));
+      window.dispatchEvent(new CustomEvent('tucajita_transactions_updated', { detail: updatedTransactions }));
+    }
+  } catch (e) {
+    console.warn('Error saving local order with real-time sync:', e);
+  }
+
   if (!supabase) return order;
   try {
     const numId = parseInt(order.id);
@@ -198,11 +522,50 @@ export async function saveOrder(order) {
   }
 }
 
+// CREATE ORDER FROM SHOPPING CART CHECKOUT
+export async function createOrderFromCart(cartItems, customerInfo, paymentInfo) {
+  const orderId = (20000 + Math.floor(Math.random() * 9000)).toString();
+  const total = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+  const newOrder = {
+    id: orderId,
+    client: customerInfo.name || 'Cliente Tu Cajita',
+    email: customerInfo.email || 'cliente@tucajita.com',
+    phone: customerInfo.phone || '+58 412-0000000',
+    deliveryAddress: customerInfo.address || 'San Cristóbal / Táchira',
+    date: new Date().toISOString().split('T')[0],
+    total: Number(total.toFixed(2)),
+    status: 'Pendiente',
+    items: cartItems.reduce((acc, item) => acc + item.quantity, 0),
+    paymentMethod: paymentInfo.method || 'Pago Móvil',
+    ref: paymentInfo.reference || `#${orderId}`,
+    itemsList: cartItems.map((item) => ({
+      id: item.id,
+      name: item.name,
+      qty: item.quantity,
+      price: item.price,
+      image: item.image,
+    })),
+  };
+
+  return await saveOrder(newOrder);
+}
+
 export async function deleteOrder(orderId) {
+  try {
+    const ords = await getOrders();
+    const filtered = ords.filter((o) => o.id !== orderId);
+    localStorage.setItem('tucajita_orders', JSON.stringify(filtered));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('tucajita_orders_updated', { detail: filtered }));
+    }
+  } catch (e) {
+    console.warn('Error deleting local order:', e);
+  }
+
   if (!supabase) return true;
   try {
-    const numId = parseInt(orderId);
-    await supabase.from('solicitud').delete().eq('id', isNaN(numId) ? orderId : numId);
+    await supabase.from('solicitud').delete().eq('id', parseInt(orderId));
     await supabase.from('orders').delete().eq('id', orderId);
     return true;
   } catch {
@@ -211,10 +574,20 @@ export async function deleteOrder(orderId) {
 }
 
 export async function updateOrderStatus(orderId, newStatus) {
+  try {
+    const ords = await getOrders();
+    const updated = ords.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o));
+    localStorage.setItem('tucajita_orders', JSON.stringify(updated));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('tucajita_orders_updated', { detail: updated }));
+    }
+  } catch (e) {
+    console.warn('Error updating status locally:', e);
+  }
+
   if (!supabase) return true;
   try {
-    const numId = parseInt(orderId);
-    await supabase.from('solicitud').update({ estatus: newStatus }).eq('id', isNaN(numId) ? orderId : numId);
+    await supabase.from('solicitud').update({ estatus: newStatus }).eq('id', parseInt(orderId));
     await supabase.from('orders').update({ status: newStatus }).eq('id', orderId);
     return true;
   } catch {
@@ -222,8 +595,17 @@ export async function updateOrderStatus(orderId, newStatus) {
   }
 }
 
-// TRANSACTIONS & INVOICES
+// TRANSACTIONS CRUD
 export async function getTransactions() {
+  try {
+    const saved = localStorage.getItem('tucajita_transactions');
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch (e) {
+    console.warn('Error reading local transactions:', e);
+  }
+
   if (!supabase) return defaultTransactions;
   try {
     let { data, error } = await supabase.from('factura').select('*').order('id', { ascending: false });
@@ -251,22 +633,111 @@ export async function getTransactions() {
 }
 
 export async function saveTransaction(t) {
+  try {
+    const trans = await getTransactions();
+    const updated = [t, ...trans];
+    localStorage.setItem('tucajita_transactions', JSON.stringify(updated));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('tucajita_transactions_updated', { detail: updated }));
+    }
+  } catch (e) {
+    console.warn('Error saving transaction:', e);
+  }
   return t;
 }
 
 export async function deleteTransaction(id) {
+  try {
+    const trans = await getTransactions();
+    const updated = trans.filter((t) => t.id !== id);
+    localStorage.setItem('tucajita_transactions', JSON.stringify(updated));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('tucajita_transactions_updated', { detail: updated }));
+    }
+  } catch (e) {
+    console.warn('Error deleting transaction:', e);
+  }
   return true;
 }
 
 export async function getInvoices() {
+  try {
+    const saved = localStorage.getItem('tucajita_invoices');
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch (e) {
+    console.warn('Error reading local invoices:', e);
+  }
   return defaultInvoices;
+}
+
+export async function saveInvoice(inv) {
+  try {
+    const invs = await getInvoices();
+    const updated = [inv, ...invs];
+    localStorage.setItem('tucajita_invoices', JSON.stringify(updated));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('tucajita_invoices_updated', { detail: updated }));
+    }
+  } catch (e) {
+    console.warn('Error saving invoice:', e);
+  }
+  return inv;
 }
 
 // INVENTORY
 export async function getStockData() {
+  try {
+    const saved = localStorage.getItem('tucajita_stock');
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch (e) {
+    console.warn('Error reading local stock:', e);
+  }
   return defaultStock;
 }
 
 export async function getReviews() {
   return defaultReviews;
+}
+
+// PASSWORD RESET FUNCTION
+export async function updateUserPassword(email, newPassword) {
+  const cleanEmail = email.trim().toLowerCase();
+
+  // 1. Actualizar en cache local de clientes
+  try {
+    const clients = JSON.parse(localStorage.getItem('tucajita_clients') || '[]');
+    const idx = clients.findIndex((c) => (c.correo && c.correo.toLowerCase() === cleanEmail) || (c.email && c.email.toLowerCase() === cleanEmail));
+    if (idx > -1) {
+      clients[idx].password = newPassword;
+      localStorage.setItem('tucajita_clients', JSON.stringify(clients));
+    } else {
+      clients.push({
+        id: `usr_${Date.now()}`,
+        correo: cleanEmail,
+        email: cleanEmail,
+        nombre: cleanEmail.split('@')[0],
+        password: newPassword,
+        rol: 'Cliente'
+      });
+      localStorage.setItem('tucajita_clients', JSON.stringify(clients));
+    }
+  } catch (e) {
+    console.warn('Error saving local client password:', e);
+  }
+
+  // 2. Actualizar en Supabase si está disponible
+  if (supabase) {
+    try {
+      await supabase.from('usuario').update({ password: newPassword }).ilike('correo', cleanEmail);
+      await supabase.auth.updateUser({ password: newPassword }).catch(() => {});
+    } catch (err) {
+      console.warn('Error updating password in Supabase:', err);
+    }
+  }
+
+  return true;
 }
