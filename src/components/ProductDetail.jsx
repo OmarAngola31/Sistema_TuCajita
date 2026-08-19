@@ -12,7 +12,6 @@ export default function ProductDetail({ product, onBack, onSelectProduct, setCur
   const [selectedImageIdx, setSelectedImageIdx] = useState(0);
   const [selectedColor, setSelectedColor] = useState('coral');
   const [selectedSize, setSelectedSize] = useState('M');
-  const [activeTab, setActiveTab] = useState('description');
   const [addedToast, setAddedToast] = useState(false);
   const isClient = Boolean(user && user.type !== 'admin' && user.role !== 'admin' && user.role !== 'Administrador');
 
@@ -58,40 +57,37 @@ export default function ProductDetail({ product, onBack, onSelectProduct, setCur
         if (g && !imgs.includes(g)) imgs.push(g);
       });
     }
-    if (Array.isArray(product.images) && product.images.length > 0) {
-      product.images.forEach((g) => {
-        if (g && !imgs.includes(g)) imgs.push(g);
-      });
-    }
-    // If fewer than 4, fill with angle variations
-    const fallbacks = [sampleHappyday, sampleCasita, empaquesLujo, unicolor];
-    fallbacks.forEach((fb) => {
-      if (imgs.length < 4 && !imgs.includes(fb)) {
-        imgs.push(fb);
+    // Si solo tiene 1 imagen, agregar vistas complementarias según el tipo
+    if (imgs.length === 1) {
+      if (product.type === 'cajas' || !product.type) {
+        imgs.push(sampleCasita, sampleHappyday);
+      } else if (product.type === 'arreglos') {
+        imgs.push(unicolor, empaquesLujo);
+      } else {
+        imgs.push(pequenos, sampleCasita);
       }
-    });
-    return imgs.slice(0, 5);
+    }
+    return imgs;
   })();
 
+  // Reset selected color and size when product changes
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    setSelectedImageIdx(0);
-    setAddedToast(false);
     if (availableColors.length > 0) {
       setSelectedColor(availableColors[0].id);
     }
     if (availableSizes.length > 0) {
       setSelectedSize(availableSizes[0].id);
     }
+    setSelectedImageIdx(0);
   }, [product?.id]);
 
   if (!product) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center p-8 text-center">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">No se seleccionó ningún producto</h2>
+      <div className="max-w-7xl mx-auto px-4 py-16 text-center">
+        <p className="text-gray-500 font-bold text-lg mb-4">No se ha seleccionado ningún producto.</p>
         <button
           onClick={onBack}
-          className="px-6 py-3 bg-[#00cbf4] hover:bg-[#00b5dc] text-white font-bold rounded-2xl shadow transition-all cursor-pointer"
+          className="px-6 py-2.5 bg-amber-500 text-white font-bold rounded-xl shadow hover:bg-amber-600 transition-colors"
         >
           Volver al Catálogo
         </button>
@@ -99,54 +95,64 @@ export default function ProductDetail({ product, onBack, onSelectProduct, setCur
     );
   }
 
+  const sectionName = product.type === 'cajas'
+    ? 'Cajas'
+    : product.type === 'arreglos'
+    ? 'Arreglos'
+    : product.type === 'eventos'
+    ? 'Eventos'
+    : 'Cajas';
+
+  // Productos relacionados para "Nuestros clientes también vieron"
   const relatedProducts = defaultProducts
-    .filter((p) => p.id !== product.id && (p.type === product.type || p.category === product.category || p.featured))
+    .filter((p) => p.id !== product.id)
     .slice(0, 4);
 
   const handleAddToCart = () => {
-    if (!isClient && !user) {
-      if (setCurrentView) setCurrentView('login');
-      return;
-    }
-    const colorObj = availableColors.find((c) => c.id === selectedColor);
-    const sizeObj = availableSizes.find((s) => s.id === selectedSize);
-    addToCart({
-      ...product,
-      selectedColor: colorObj?.id || selectedColor,
-      selectedColorName: colorObj?.name || selectedColor,
-      selectedSize: sizeObj?.label || selectedSize,
-      selectedSizeDesc: sizeObj?.desc || '',
-    }, 1);
+    addToCart(product, 1);
     setAddedToast(true);
-    setTimeout(() => setAddedToast(false), 2200);
+    setTimeout(() => setAddedToast(false), 2500);
   };
 
   const handleWhatsAppOrder = () => {
-    const colorName = availableColors.find((c) => c.id === selectedColor)?.name || selectedColor;
-    const sizeLabel = availableSizes.find((s) => s.id === selectedSize)?.label || selectedSize;
+    const selectedColorObj = availableColors.find((c) => c.id === selectedColor);
+    const selectedSizeObj = availableSizes.find((s) => s.id === selectedSize);
+
     const message = encodeURIComponent(
-      `¡Hola Tu Cajita! 👋 Quisiera información y pedir:\n- Producto: *${product.name}*\n- Medida: *${sizeLabel}*\n- Color: *${colorName}*\n- Precio: *$${product.price.toFixed(2)}*`
+      `¡Hola Tu Cajita! 👋 Me interesa comprar este producto:\n\n` +
+      `📦 *${product.name}*\n` +
+      `💰 *Precio:* $${product.price.toFixed(2)}\n` +
+      `🎨 *Color:* ${selectedColorObj?.name || selectedColor}\n` +
+      `📏 *Medida:* ${selectedSizeObj?.desc || selectedSize}\n` +
+      `🏷️ *Referencia:* ${product.ref || `TC-${product.id}`}\n\n` +
+      `¿Tienen disponibilidad para entrega en San Cristóbal?`
     );
     window.open(`https://wa.me/584120177993?text=${message}`, '_blank');
   };
 
-  const sectionName = product.type === 'cajas' ? 'Cajas' : product.type === 'arreglos' ? 'Arreglos' : product.type === 'eventos' ? 'Eventos' : 'Catálogo';
-
   return (
-    <div className="bg-white min-h-screen pb-12">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6">
+    <div className="w-full bg-[#f8fafc] text-[#0f172a] py-8 sm:py-12 px-4 sm:px-6 lg:px-8 font-sans">
+      <div className="max-w-6xl mx-auto">
 
-        {/* ══════════ BREADCRUMB ══════════ */}
-        <nav className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 mb-6">
+        {/* ══════════════════════════════════════════════════════════════ */}
+        {/*  BREADCRUMB HEADER: INICIO / CAJAS                            */}
+        {/* ══════════════════════════════════════════════════════════════ */}
+        <nav className="flex items-center gap-2 text-sm sm:text-base font-bold text-gray-500 mb-6 sm:mb-8">
           <button
-            onClick={() => setCurrentView('home')}
+            onClick={() => {
+              if (setCurrentView) setCurrentView('home');
+              else onBack();
+            }}
             className="hover:text-gray-900 transition-colors cursor-pointer bg-transparent border-none p-0"
           >
             Inicio
           </button>
           <span>/</span>
           <button
-            onClick={() => { setCurrentView(product.type || 'productos'); }}
+            onClick={() => {
+              if (setCurrentView) setCurrentView(product.type || 'cajas');
+              else onBack();
+            }}
             className="hover:text-gray-900 transition-colors cursor-pointer bg-transparent border-none p-0"
           >
             {sectionName}
