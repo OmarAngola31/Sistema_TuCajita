@@ -115,23 +115,23 @@ export default function CheckoutFlow({ user, setCurrentView, onBackToShop }) {
     const subtotalStr = finalSubtotal.toFixed(2);
 
     const message = encodeURIComponent(
-      `🛒 *NUEVO PEDIDO CONFIRMADO - TU CAJITA*\n` +
+      `NUEVO PEDIDO CONFIRMADO - TU CAJITA\n` +
       `━━━━━━━━━━━━━━━━━━━━\n` +
-      `🧾 *Factura Nro:* #${formData.invoiceNumber}\n` +
-      `👤 *Cliente:* ${formData.firstName} ${formData.lastName}\n` +
-      `📞 *Teléfono:* ${formData.phone}\n` +
-      `✉️ *Email:* ${formData.email}\n` +
-      `📍 *Dirección:* ${formData.deliveryAddress}\n` +
-      `🚚 *Tipo de Entrega:* ${formData.deliveryType}\n` +
-      `📅 *Fecha de Entrega:* ${formData.deliveryDate}\n` +
-      `💳 *Método de Pago:* ${formData.paymentMethod}\n` +
-      `🔖 *Referencia / Código:* ${formData.reference}\n` +
+      `• *Factura Nro:* #${formData.invoiceNumber}\n` +
+      `• *Cliente:* ${formData.firstName} ${formData.lastName}\n` +
+      `• *Telefono:* ${formData.phone}\n` +
+      `• *Email:* ${formData.email}\n` +
+      `• *Direccion:* ${formData.deliveryAddress}\n` +
+      `• *Tipo de Entrega:* ${formData.deliveryType}\n` +
+      `• *Fecha de Entrega:* ${formData.deliveryDate}\n` +
+      `• *Metodo de Pago:* ${formData.paymentMethod}\n` +
+      `• *Referencia / Codigo:* ${formData.reference}\n` +
       `━━━━━━━━━━━━━━━━━━━━\n` +
       `*Detalle de Productos:*\n${itemsList}\n` +
       `━━━━━━━━━━━━━━━━━━━━\n` +
-      `💵 *Subtotal:* $${subtotalStr}\n` +
-      `⭐ *TOTAL GENERAL:* $${totalStr} (USD)\n\n` +
-      `¡Hola Tu Cajita! 👋 Acabo de emitir la orden #${formData.invoiceNumber} con comprobante ${formData.reference}. Envío los detalles para su despacho.`
+      `• *Subtotal:* $${subtotalStr}\n` +
+      `• *TOTAL GENERAL:* $${totalStr} (USD)\n\n` +
+      `Hola Tu Cajita! Acabo de emitir la orden #${formData.invoiceNumber} con comprobante ${formData.reference}. Envio los detalles para su despacho.`
     );
 
     window.open(`https://wa.me/584120177993?text=${message}`, '_blank');

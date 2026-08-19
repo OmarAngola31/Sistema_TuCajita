@@ -109,6 +109,11 @@ export default function ProductDetail({ product, onBack, onSelectProduct, setCur
     .slice(0, 4);
 
   const handleAddToCart = () => {
+    if (!user) {
+      alert('Debes iniciar sesión para añadir productos al carrito.');
+      if (setCurrentView) setCurrentView('login');
+      return;
+    }
     addToCart(product, 1);
     setAddedToast(true);
     setTimeout(() => setAddedToast(false), 2500);
@@ -119,13 +124,13 @@ export default function ProductDetail({ product, onBack, onSelectProduct, setCur
     const selectedSizeObj = availableSizes.find((s) => s.id === selectedSize);
 
     const message = encodeURIComponent(
-      `¡Hola Tu Cajita! 👋 Me interesa comprar este producto:\n\n` +
-      `📦 *${product.name}*\n` +
-      `💰 *Precio:* $${product.price.toFixed(2)}\n` +
-      `🎨 *Color:* ${selectedColorObj?.name || selectedColor}\n` +
-      `📏 *Medida:* ${selectedSizeObj?.desc || selectedSize}\n` +
-      `🏷️ *Referencia:* ${product.ref || `TC-${product.id}`}\n\n` +
-      `¿Tienen disponibilidad para entrega en San Cristóbal?`
+      `Hola Tu Cajita! Me interesa comprar este producto:\n\n` +
+      `• *${product.name}*\n` +
+      `• *Precio:* $${product.price.toFixed(2)}\n` +
+      `• *Color:* ${selectedColorObj?.name || selectedColor}\n` +
+      `• *Medida:* ${selectedSizeObj?.desc || selectedSize}\n` +
+      `• *Referencia:* ${product.ref || `TC-${product.id}`}\n\n` +
+      `Tienen disponibilidad para entrega en San Cristobal?`
     );
     window.open(`https://wa.me/584120177993?text=${message}`, '_blank');
   };
@@ -403,6 +408,11 @@ export default function ProductDetail({ product, onBack, onSelectProduct, setCur
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
+                      if (!user) {
+                        alert('Debes iniciar sesión para añadir productos al carrito.');
+                        if (setCurrentView) setCurrentView('login');
+                        return;
+                      }
                       addToCart(rp, 1);
                     }}
                     className="w-9 h-9 rounded-full bg-gray-200 hover:bg-[#00cbf4] text-gray-800 hover:text-white flex items-center justify-center transition-all cursor-pointer flex-shrink-0 shadow-sm"
